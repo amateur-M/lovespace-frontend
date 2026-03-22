@@ -1,6 +1,7 @@
 import { ConfigProvider } from 'antd'
 import { Route, Routes } from 'react-router-dom'
 import AppLayout from './layouts/AppLayout'
+import CoupleHome from './pages/CoupleHome'
 import HomePage from './pages/HomePage'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
@@ -16,6 +17,7 @@ function App() {
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/couple" element={<CoupleHome />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

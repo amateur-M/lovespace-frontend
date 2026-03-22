@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore'
 
 const { Header, Content, Footer } = Layout
 
-const menuItems = [
+const baseMenuItems = [
   {
     key: '/',
     label: <Link to="/">首页</Link>,
@@ -15,13 +15,20 @@ const menuItems = [
 export default function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const selectedKeys = menuItems.map((i) => i.key).filter((k) => location.pathname === k)
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
   const isAuthed = useAuthStore((s) => s.isAuthed)
   const hydrate = useAuthStore((s) => s.hydrate)
   const fetchProfile = useAuthStore((s) => s.fetchProfile)
   const logout = useAuthStore((s) => s.logout)
+
+  const menuItems = isAuthed
+    ? [
+        ...baseMenuItems,
+        { key: '/couple', label: <Link to="/couple">情侣首页</Link> },
+      ]
+    : baseMenuItems
+  const selectedKeys = menuItems.map((i) => i.key).filter((k) => location.pathname === k)
 
   useEffect(() => {
     hydrate()
