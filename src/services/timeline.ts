@@ -28,10 +28,22 @@ type ApiResponse<T> = {
   data: T
 }
 
-export async function listTimelineRecords(coupleId: string, page: number, pageSize: number) {
-  const { data } = await http.get<ApiResponse<LoveRecordPage>>('/api/v1/timeline/records', {
-    params: { coupleId, page, pageSize },
-  })
+export type TimelineListRange = {
+  /** YYYY-MM-DD，含当天 */
+  startDate?: string
+  endDate?: string
+}
+
+export async function listTimelineRecords(
+  coupleId: string,
+  page: number,
+  pageSize: number,
+  range?: TimelineListRange | null,
+) {
+  const params: Record<string, string | number> = { coupleId, page, pageSize }
+  if (range?.startDate) params.startDate = range.startDate
+  if (range?.endDate) params.endDate = range.endDate
+  const { data } = await http.get<ApiResponse<LoveRecordPage>>('/api/v1/timeline/records', { params })
   return data
 }
 

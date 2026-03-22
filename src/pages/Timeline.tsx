@@ -2,6 +2,7 @@ import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
   Button,
   Card,
+  DatePicker,
   Divider,
   Empty,
   FloatButton,
@@ -11,11 +12,13 @@ import {
   Typography,
   message,
 } from 'antd'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import TimelineForm from '../components/TimelineForm'
 import TimelineItem from '../components/TimelineItem'
-import type { LoveRecord } from '../services/timeline'
+import type { LoveRecord, TimelineListRange } from '../services/timeline'
 import { listTimelineRecords } from '../services/timeline'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
@@ -60,12 +63,22 @@ export default function Timeline() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [pullPx, setPullPx] = useState(0)
+  /** 记录日期区间；两端都选中方才筛选，清空为查看全部 */
+  const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const pullStartY = useRef(0)
   const pullActive = useRef(false)
 
   const coupleId = coupleInfo?.bindingId ?? null
+
+  const listRange: TimelineListRange | undefined = useMemo(() => {
+    if (!dateRange?.[0] || !dateRange[1]) return undefined
+    return {
+      startDate: dateRange[0].format('YYYY-MM-DD'),
+      endDate: dateRange[1].format('YYYY-MM-DD'),
+    }
+  }, [dateRange])
 
   useEffect(() => {
     if (!isAuthed) return
@@ -78,7 +91,7 @@ export default function Timeline() {
       const setBusy = append ? setLoadingMore : setLoading
       setBusy(true)
       try {
-        const resp = await listTimelineRecords(coupleId, nextPage, PAGE_SIZE)
+        const resp = await listTimelineRecords(coupleId, nextPage, PAGE_SIZE, listRange)
         if (resp.code !== 0 || !resp.data) {
           throw new Error(resp.message || '加载失败')
         }
@@ -92,7 +105,7 @@ export default function Timeline() {
         setBusy(false)
       }
     },
-    [coupleId],
+    [coupleId, listRange],
   )
 
   const refresh = useCallback(async () => {
@@ -107,7 +120,7 @@ export default function Timeline() {
       return
     }
     loadPage(1, false).catch(() => undefined)
-  }, [coupleId, loadPage])
+  }, [coupleId, listRange?.startDate, listRange?.endDate, loadPage])
 
   const hasMore = records.length < total
 
@@ -135,9 +148,38 @@ export default function Timeline() {
             </Button>
           ) : null}
         </div>
-        <Typography.Paragraph type="secondary" className="!mb-0">
-          按月份浏览记录；移动端在列表顶部下拉可刷新；底部加载更多。
+        <Typography.Paragraph type="secondary" className="!mb-2">
+          按月份浏览记录；可选记录日期区间筛选；移动端在列表顶部下拉可刷新；底部加载更多。
         </Typography.Paragraph>
+        {coupleId ? (
+          <Space wrap className="w-full items-center" size="middle">
+            <Typography.Text type="secondary" className="shrink-0">
+              记录日期
+            </Typography.Text>
+            <DatePicker.RangePicker
+              value={dateRange}
+              onChange={(v) => setDateRange(v)}
+              allowEmpty={[true, true]}
+              allowClear
+              presets={[
+                { label: '最近7天', value: [dayjs().subtract(6, 'day'), dayjs()] },
+                { label: '最近30天', value: [dayjs().subtract(29, 'day'), dayjs()] },
+                { label: '本月', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
+              ]}
+              className="min-w-[240px] flex-1 sm:max-w-md"
+            />
+            <Button
+              type="link"
+              className="!px-0"
+              onClick={() => {
+                setDateRange(null)
+                message.info('已切换为全部时间')
+              }}
+            >
+              全部时间
+            </Button>
+          </Space>
+        ) : null}
       </Card>
 
       {!coupleId && !coupleLoading ? (
