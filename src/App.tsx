@@ -5,6 +5,7 @@ import CoupleHome from './pages/CoupleHome'
 import HomePage from './pages/HomePage'
 import Login from './pages/Login'
 import Profile from './pages/Profile'
+import Timeline from './pages/Timeline'
 import Register from './pages/Register'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -18,6 +19,7 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/couple" element={<CoupleHome />} />
+          <Route path="/timeline" element={<Timeline />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
