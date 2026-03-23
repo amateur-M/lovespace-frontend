@@ -15,9 +15,9 @@ export default function AlbumCard({ album, onClick }: AlbumCardProps) {
   return (
     <Card
       hoverable
-      className="overflow-hidden"
+      className="ls-surface !shadow-sm cursor-pointer overflow-hidden transition-shadow duration-200 hover:!shadow-md"
       cover={
-        <div className="relative aspect-[4/3] bg-gradient-to-br from-rose-50 to-violet-100">
+        <div className="relative aspect-[4/3] bg-gradient-to-br from-rose-100 via-orange-50 to-amber-50">
           {cover ? (
             <img src={cover} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -29,7 +29,7 @@ export default function AlbumCard({ album, onClick }: AlbumCardProps) {
       }
       onClick={onClick}
     >
-      <Typography.Text strong className="line-clamp-2 text-base">
+      <Typography.Text strong className="line-clamp-2 text-base text-orange-950">
         {album.name}
       </Typography.Text>
     </Card>

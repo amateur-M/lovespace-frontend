@@ -1,3 +1,4 @@
+import { HeartOutlined } from '@ant-design/icons'
 import { Avatar, Card, Space, Tag, Typography } from 'antd'
 import type { User } from '../services/auth'
 
@@ -11,14 +12,14 @@ type CoupleCardProps = {
   className?: string
 }
 
-function statusMeta(status: number): { color: string; label: string } {
+function statusMeta(status: number): { className: string; label: string } {
   switch (status) {
     case 1:
-      return { color: 'success', label: '交往中' }
+      return { className: 'border border-emerald-200 bg-emerald-50 text-emerald-800', label: '交往中' }
     case 2:
-      return { color: 'warning', label: '已冻结' }
+      return { className: 'border border-amber-200 bg-amber-50 text-amber-900', label: '已冻结' }
     default:
-      return { color: 'default', label: `状态 ${status}` }
+      return { className: 'border border-rose-200 bg-rose-100 text-rose-900', label: `状态 ${status}` }
   }
 }
 
@@ -29,9 +30,11 @@ export default function CoupleCard({ me, partner, status, className }: CoupleCar
   const meta = statusMeta(status)
 
   return (
-    <Card className={className} styles={{ body: { padding: 24 } }}>
+    <Card className={`ls-surface !shadow-sm ${className ?? ''}`} styles={{ body: { padding: 24 } }}>
       <div className="mb-4 flex justify-center">
-        <Tag color={meta.color}>{meta.label}</Tag>
+        <Tag bordered={false} className={`!m-0 !rounded-full !px-3 !py-0.5 !text-xs !font-medium ${meta.className}`}>
+          {meta.label}
+        </Tag>
       </div>
       <Space size={32} align="start" className="w-full justify-center" wrap>
         <Space direction="vertical" align="center" size={8}>
@@ -45,9 +48,7 @@ export default function CoupleCard({ me, partner, status, className }: CoupleCar
         </Space>
 
         <div className="flex flex-col items-center justify-center pt-6">
-          <Typography.Text type="secondary" className="text-2xl">
-            ♥
-          </Typography.Text>
+          <HeartOutlined className="text-2xl text-rose-300" aria-hidden />
         </div>
 
         <Space direction="vertical" align="center" size={8}>

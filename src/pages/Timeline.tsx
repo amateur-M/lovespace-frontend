@@ -137,9 +137,9 @@ export default function Timeline() {
 
   return (
     <div className="relative pb-20">
-      <Card loading={coupleLoading && !coupleInfo}>
+      <Card className="ls-surface !shadow-sm" loading={coupleLoading && !coupleInfo}>
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <Typography.Title level={3} className="!mt-0">
+          <Typography.Title level={3} className="!mt-0 !font-semibold !tracking-tight !text-orange-950">
             恋爱时间轴
           </Typography.Title>
           {coupleId ? (
@@ -148,12 +148,12 @@ export default function Timeline() {
             </Button>
           ) : null}
         </div>
-        <Typography.Paragraph type="secondary" className="!mb-2">
+        <Typography.Paragraph className="ls-page-intro !mb-3 !mt-2">
           按月份浏览记录；可选记录日期区间筛选；移动端在列表顶部下拉可刷新；底部加载更多。
         </Typography.Paragraph>
         {coupleId ? (
           <Space wrap className="w-full items-center" size="middle">
-            <Typography.Text type="secondary" className="shrink-0">
+            <Typography.Text className="shrink-0 text-rose-900/75">
               记录日期
             </Typography.Text>
             <DatePicker.RangePicker
@@ -183,7 +183,7 @@ export default function Timeline() {
       </Card>
 
       {!coupleId && !coupleLoading ? (
-        <Card className="mt-4">
+        <Card className="ls-surface mt-4 !shadow-sm">
           <Empty description="请先完成情侣绑定">
             <Link to="/couple">
               <Button type="primary">去情侣首页绑定</Button>
@@ -197,7 +197,7 @@ export default function Timeline() {
           <div className="relative mt-4">
             {pullPx > 8 ? (
               <div
-                className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center text-sm text-gray-500"
+                className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center text-sm text-rose-800/65"
                 style={{ top: -28 }}
               >
                 {pullPx > 52 ? '松开刷新' : '下拉刷新'}
@@ -205,7 +205,7 @@ export default function Timeline() {
             ) : null}
             <div
               ref={scrollRef}
-              className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-lg border border-gray-100 bg-gray-50/50 p-3"
+              className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-xl border border-rose-200/90 bg-rose-50/60 p-3"
               style={{ touchAction: 'pan-y' }}
               onTouchStart={(e) => {
                 const el = scrollRef.current
@@ -244,7 +244,7 @@ export default function Timeline() {
                   <Space direction="vertical" size={16} className="w-full">
                     {grouped.map(({ month, items }) => (
                       <div key={month}>
-                        <Divider orientation="left" className="!mt-0">
+                        <Divider orientation="left" className="!mt-0 !border-rose-200 !text-rose-800/65">
                           {formatMonthTitle(month)}
                         </Divider>
                         <Space direction="vertical" size={12} className="w-full">
@@ -263,7 +263,7 @@ export default function Timeline() {
                     </Button>
                   </div>
                 ) : records.length > 0 ? (
-                  <Typography.Text type="secondary" className="mt-4 block text-center text-sm">
+                  <Typography.Text className="mt-4 block text-center text-sm text-rose-800/65">
                     已加载全部 {total} 条
                   </Typography.Text>
                 ) : null}

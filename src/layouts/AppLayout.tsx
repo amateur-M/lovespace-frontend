@@ -64,30 +64,39 @@ export default function AppLayout() {
       ]
 
   return (
-    <Layout className="min-h-screen">
-      <Header className="flex items-center gap-4">
-        <Typography.Text className="!text-white !m-0">LoveSpace</Typography.Text>
+    <Layout className="min-h-screen bg-rose-50">
+      <Header className="sticky top-0 z-50 flex h-14 items-center gap-2 border-b border-rose-200/90 bg-white/95 px-4 backdrop-blur-md sm:gap-4 sm:px-5">
+        <Link to="/" className="shrink-0">
+          <Typography.Text className="!m-0 !text-sm !font-semibold !tracking-wide !text-orange-950">
+            LoveSpace
+          </Typography.Text>
+        </Link>
         <Menu
-          theme="dark"
           mode="horizontal"
           selectedKeys={selectedKeys}
           items={menuItems}
-          className="flex-1"
+          className="min-w-0 flex-1 border-0 bg-transparent !leading-normal [&_.ant-menu-item]:!rounded-lg [&_.ant-menu-item]:after:!border-none"
         />
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-          <div className="cursor-pointer select-none">
-            <Avatar size="small" src={user?.avatarUrl ?? undefined}>
+          <button
+            type="button"
+            className="flex cursor-pointer select-none items-center rounded-full border border-rose-200/90 bg-white p-0.5 transition-colors duration-200 hover:border-rose-300"
+            aria-label="用户菜单"
+          >
+            <Avatar size={32} src={user?.avatarUrl ?? undefined}>
               {user?.username?.slice(0, 1)?.toUpperCase() ?? 'U'}
             </Avatar>
-          </div>
+          </button>
         </Dropdown>
       </Header>
-      <Content className="p-6">
-        <div className="mx-auto w-full max-w-5xl">
+      <Content className="px-4 py-8 sm:px-6">
+        <div className="mx-auto w-full max-w-6xl">
           <Outlet />
         </div>
       </Content>
-      <Footer className="text-center text-gray-500">LoveSpace © {new Date().getFullYear()}</Footer>
+      <Footer className="border-t border-rose-200/80 bg-white py-8 text-center text-sm text-rose-800/65">
+        LoveSpace © {new Date().getFullYear()}
+      </Footer>
     </Layout>
   )
 }

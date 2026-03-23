@@ -112,18 +112,18 @@ export default function CoupleHome() {
   }
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
-      <Card loading={loading}>
-        <Typography.Title level={3} className="!mt-0">
+    <Space direction="vertical" size={20} className="w-full">
+      <Card className="ls-surface !shadow-sm" loading={loading}>
+        <Typography.Title level={3} className="!mt-0 !font-semibold !tracking-tight !text-orange-950">
           情侣首页
         </Typography.Title>
-        <Typography.Paragraph type="secondary" className="!mb-0">
+        <Typography.Paragraph className="ls-page-intro !mb-0 !mt-2">
           查看绑定状态、在一起天数，并可设置恋爱开始日。
         </Typography.Paragraph>
       </Card>
 
       {!isBound && (
-        <Card>
+        <Card className="ls-surface !shadow-sm">
           <Empty
             description="暂未绑定情侣"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -137,7 +137,7 @@ export default function CoupleHome() {
               </Button>
             </Space>
           </Empty>
-          <Typography.Paragraph type="secondary" className="!mt-4 !mb-0 text-center text-sm">
+          <Typography.Paragraph className="!mt-4 !mb-0 text-center text-sm text-rose-800/70">
             需要对方的用户 ID（可在个人资料或首页查看）。发送后对方调用接受邀请接口完成绑定。
           </Typography.Paragraph>
         </Card>
@@ -146,7 +146,7 @@ export default function CoupleHome() {
       {isBound && info && (
         <>
           <CoupleCard me={user} partner={info.partner} status={info.status} />
-          <Card>
+          <Card className="ls-surface !shadow-sm">
             <Space direction="vertical" size={16} className="w-full">
               <DaysCounter days={info.relationshipDays} />
               <Descriptions column={1} size="small" bordered>

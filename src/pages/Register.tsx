@@ -1,5 +1,6 @@
-import { Button, Card, Form, Input, Typography, message } from 'antd'
+import { Button, Card, Form, Input, message } from 'antd'
 import { Link, useNavigate } from 'react-router-dom'
+import AuthPageShell from '../components/AuthPageShell'
 import { useAuthStore } from '../stores/authStore'
 
 type FormValues = {
@@ -24,13 +25,9 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <Card className="w-full max-w-md">
-        <Typography.Title level={3} className="!mt-0">
-          注册
-        </Typography.Title>
-
-        <Form layout="vertical" onFinish={onFinish} autoComplete="off">
+    <AuthPageShell title="注册" subtitle="创建账号，开始记录属于你们的故事">
+      <Card className="ls-surface w-full !shadow-none" variant="borderless">
+        <Form layout="vertical" onFinish={onFinish} autoComplete="off" className="!mt-0">
           <Form.Item
             label="用户名"
             name="username"
@@ -86,11 +83,14 @@ export default function Register() {
             注册
           </Button>
 
-          <div className="mt-4 text-center text-sm text-gray-500">
-            已有账号？<Link to="/login">去登录</Link>
+          <div className="mt-6 text-center text-sm text-rose-800/65">
+            已有账号？{' '}
+            <Link to="/login" className="ls-link">
+              去登录
+            </Link>
           </div>
         </Form>
       </Card>
-    </div>
+    </AuthPageShell>
   )
 }

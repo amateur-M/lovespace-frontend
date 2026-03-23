@@ -51,7 +51,7 @@ export default function Profile() {
   }
 
   return (
-    <Card title="个人信息">
+    <Card className="ls-surface !shadow-sm" title={<span className="font-medium text-orange-950">个人信息</span>}>
       <Form form={form} layout="vertical" onFinish={onSave}>
         <Space align="center" size={16} className="mb-4">
           <Avatar size={72} src={form.getFieldValue('avatarUrl') || user?.avatarUrl || undefined}>

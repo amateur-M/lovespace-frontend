@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ls-font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ls-page-bg: #fff1f2;
+  --ls-ink: #431407;
+  --ls-muted: #9f1239;
+}
+
 html,
 body,
 #root {
@@ -10,4 +17,32 @@ body,
 
 body {
   margin: 0;
+  font-family: var(--ls-font-sans);
+  -webkit-font-smoothing: antialiased;
+  color: var(--ls-ink);
+  background-color: var(--ls-page-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  .ls-surface {
+    @apply rounded-xl border border-rose-200/90 bg-white shadow-sm;
+  }
+
+  .ls-page-intro {
+    @apply text-sm leading-relaxed text-rose-900/75;
+  }
+
+  .ls-link {
+    @apply font-medium text-rose-800 underline-offset-4 transition-colors duration-200 hover:text-rose-950;
+  }
 }

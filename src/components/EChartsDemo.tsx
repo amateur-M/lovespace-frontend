@@ -10,10 +10,35 @@ export default function EChartsDemo() {
 
     const chart = echarts.init(elRef.current)
     chart.setOption({
-      tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] },
-      yAxis: { type: 'value' },
-      series: [{ type: 'line', data: [120, 200, 150, 80, 70] }],
+      color: ['#e11d48'],
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(255,255,255,0.97)',
+        borderColor: '#fecdd3',
+        textStyle: { color: '#9f1239' },
+      },
+      grid: { left: 48, right: 16, top: 20, bottom: 28 },
+      xAxis: {
+        type: 'category',
+        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        axisLine: { lineStyle: { color: '#fecdd3' } },
+        axisLabel: { color: '#be123c' },
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: '#ffe4e6' } },
+        axisLabel: { color: '#be123c' },
+      },
+      series: [
+        {
+          type: 'line',
+          smooth: true,
+          data: [120, 200, 150, 80, 70],
+          lineStyle: { width: 2, color: '#e11d48' },
+          itemStyle: { color: '#f97316' },
+          areaStyle: { color: 'rgba(225,29,72,0.08)' },
+        },
+      ],
     })
 
     const onResize = () => chart.resize()
@@ -25,8 +50,8 @@ export default function EChartsDemo() {
   }, [])
 
   return (
-    <Card title="ECharts Demo">
-      <div ref={elRef} className="h-72 w-full" />
+    <Card className="ls-surface !shadow-sm" title={<span className="font-medium text-orange-950">ECharts Demo</span>}>
+      <div ref={elRef} className="h-72 w-full min-h-[18rem]" />
     </Card>
   )
 }

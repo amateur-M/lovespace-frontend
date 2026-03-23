@@ -11,11 +11,12 @@ type DaysCounterProps = {
  */
 export default function DaysCounter({ days, className }: DaysCounterProps) {
   return (
-    <Typography.Title level={4} className={`!m-0 text-center ${className ?? ''}`}>
+    <Typography.Title
+      level={4}
+      className={`!m-0 text-center !font-medium !text-rose-900/85 ${className ?? ''}`}
+    >
       我们已经在一起第{' '}
-      <Typography.Text type="danger" className="text-2xl font-semibold">
-        {days}
-      </Typography.Text>{' '}
+      <span className="text-3xl font-semibold tabular-nums tracking-tight text-rose-600">{days}</span>{' '}
       天
     </Typography.Title>
   )

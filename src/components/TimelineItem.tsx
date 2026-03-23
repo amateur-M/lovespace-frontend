@@ -1,3 +1,4 @@
+import { EnvironmentOutlined } from '@ant-design/icons'
 import { Image, Space, Typography } from 'antd'
 import MoodTag from './MoodTag'
 import type { LoveRecord } from '../services/timeline'
@@ -53,7 +54,7 @@ export default function TimelineItem({ record }: TimelineItemProps) {
     (loc?.lat != null && loc?.lng != null ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : null)
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-rose-200/90 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-md">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Typography.Text strong className="text-base">
           {record.recordDate}
@@ -68,8 +69,9 @@ export default function TimelineItem({ record }: TimelineItemProps) {
       </div>
       <Typography.Paragraph className="!mb-2 whitespace-pre-wrap">{record.content}</Typography.Paragraph>
       {locText ? (
-        <Typography.Text type="secondary" className="mb-2 block text-sm">
-          📍 {locText}
+        <Typography.Text type="secondary" className="mb-2 flex items-center gap-1.5 text-sm text-rose-800/70">
+          <EnvironmentOutlined className="text-rose-400" aria-hidden />
+          {locText}
         </Typography.Text>
       ) : null}
       {images.length > 0 ? (

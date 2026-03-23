@@ -1,5 +1,7 @@
 import { ConfigProvider } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
 import { Route, Routes } from 'react-router-dom'
+import { lovespaceTheme } from './theme/antdTheme'
 import AppLayout from './layouts/AppLayout'
 import CoupleHome from './pages/CoupleHome'
 import HomePage from './pages/HomePage'
@@ -12,7 +14,7 @@ import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
   return (
-    <ConfigProvider>
+    <ConfigProvider theme={lovespaceTheme} locale={zhCN}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

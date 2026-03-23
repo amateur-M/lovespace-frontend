@@ -1,5 +1,3 @@
-import { Tag } from 'antd'
-
 export const MOOD_OPTIONS = [
   { value: 'happy', label: '开心' },
   { value: 'sad', label: '难过' },
@@ -9,13 +7,13 @@ export const MOOD_OPTIONS = [
   { value: 'missed', label: '想念' },
 ] as const
 
-const MOOD_META: Record<string, { label: string; color: string }> = {
-  happy: { label: '开心', color: 'gold' },
-  sad: { label: '难过', color: 'blue' },
-  excited: { label: '兴奋', color: 'magenta' },
-  calm: { label: '平静', color: 'cyan' },
-  loved: { label: '被爱', color: 'red' },
-  missed: { label: '想念', color: 'purple' },
+const MOOD_META: Record<string, { label: string }> = {
+  happy: { label: '开心' },
+  sad: { label: '难过' },
+  excited: { label: '兴奋' },
+  calm: { label: '平静' },
+  loved: { label: '被爱' },
+  missed: { label: '想念' },
 }
 
 export function moodLabel(mood: string) {
@@ -29,10 +27,12 @@ type MoodTagProps = {
 
 /** 心情标签展示（与后端 LoveMood 一致）。 */
 export default function MoodTag({ mood, className }: MoodTagProps) {
-  const meta = MOOD_META[mood] ?? { label: mood, color: 'default' }
+  const meta = MOOD_META[mood] ?? { label: mood }
   return (
-    <Tag color={meta.color as string} className={className}>
+    <span
+      className={`inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-medium text-rose-800/85 ${className ?? ''}`}
+    >
       {meta.label}
-    </Tag>
+    </span>
   )
 }

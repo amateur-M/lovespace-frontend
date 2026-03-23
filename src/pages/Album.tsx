@@ -184,23 +184,28 @@ export default function AlbumPage() {
 
   if (!coupleId) {
     return (
-      <Empty description="请先完成情侣绑定后再使用相册">
-        <Link to="/couple">
-          <Button type="primary">去情侣首页</Button>
-        </Link>
-      </Empty>
+      <div className="ls-surface py-16">
+        <Empty
+          description={<span className="text-rose-800/70">请先完成情侣绑定后再使用相册</span>}
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        >
+          <Link to="/couple">
+            <Button type="primary">去情侣首页</Button>
+          </Link>
+        </Empty>
+      </div>
     )
   }
 
   if (selectedAlbumId && selectedAlbum) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Space>
             <Button icon={<ArrowLeftOutlined />} onClick={() => setSelectedAlbumId(null)}>
               返回相册
             </Button>
-            <Typography.Title level={4} className="!mb-0">
+            <Typography.Title level={4} className="!mb-0 !font-semibold !text-orange-950">
               {selectedAlbum.name}
             </Typography.Title>
           </Space>
@@ -228,11 +233,14 @@ export default function AlbumPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Typography.Title level={4} className="!mb-0">
-          情侣相册
-        </Typography.Title>
+        <div>
+          <Typography.Title level={4} className="!mb-1 !font-semibold !text-orange-950">
+            情侣相册
+          </Typography.Title>
+          <Typography.Text className="text-sm text-rose-800/70">按相册整理照片，支持收藏与预览</Typography.Text>
+        </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
           新建相册
         </Button>
@@ -243,11 +251,16 @@ export default function AlbumPage() {
           <Spin />
         </div>
       ) : albums.length === 0 ? (
-        <Empty description="还没有相册">
-          <Button type="primary" onClick={() => setCreateOpen(true)}>
-            创建第一个相册
-          </Button>
-        </Empty>
+        <div className="ls-surface py-16">
+          <Empty
+            description={<span className="text-rose-800/70">还没有相册</span>}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          >
+            <Button type="primary" onClick={() => setCreateOpen(true)}>
+              创建第一个相册
+            </Button>
+          </Empty>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {albums.map((album) => (

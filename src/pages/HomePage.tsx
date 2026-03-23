@@ -8,26 +8,31 @@ export default function HomePage() {
   const user = useAuthStore((s) => s.user)
 
   return (
-    <Space direction="vertical" size={16} className="w-full">
-      <Card>
-        <Typography.Title level={3} className="!m-0">
+    <Space direction="vertical" size={20} className="w-full">
+      <Card className="ls-surface !shadow-sm">
+        <Typography.Title level={3} className="!m-0 !font-semibold !tracking-tight !text-orange-950">
           首页
         </Typography.Title>
-        <Typography.Paragraph className="!mb-0">
-          React + TypeScript + Vite + Ant Design + TailwindCSS 已就绪。
+        <Typography.Paragraph className="ls-page-intro !mb-0 !mt-2">
+          记录日常、时间轴与相册；界面保持简洁，让内容成为焦点。
         </Typography.Paragraph>
       </Card>
 
       <Card
-        title="当前登录用户"
+        className="ls-surface !shadow-sm"
+        title={<span className="font-medium text-orange-950">当前登录用户</span>}
         extra={
           !isAuthed ? (
             <Space>
               <Button type="primary">
-                <Link to="/login">去登录</Link>
+                <Link to="/login" className="text-inherit">
+                  去登录
+                </Link>
               </Button>
               <Button>
-                <Link to="/register">去注册</Link>
+                <Link to="/register" className="text-inherit">
+                  去注册
+                </Link>
               </Button>
             </Space>
           ) : null

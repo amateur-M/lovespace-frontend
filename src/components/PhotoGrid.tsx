@@ -13,39 +13,47 @@ function isFav(p: AlbumPhoto) {
   return p.isFavorite === 1
 }
 
-/** 瀑布流布局（多列 + break-inside-avoid），点击图片打开灯箱。 */
+/**
+ * 等尺寸网格：每格固定 1:1，图片 object-cover 裁切，避免瀑布流导致缩略图高矮不一。
+ */
 export default function PhotoGrid({ photos, onPhotoClick, onToggleFavorite }: PhotoGridProps) {
   if (photos.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/80 py-16 text-center">
-        <Typography.Text type="secondary">还没有照片，点击「上传照片」添加</Typography.Text>
+      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50/80 py-16 text-center">
+        <Typography.Text className="text-rose-800/70">还没有照片，点击「上传照片」添加</Typography.Text>
       </div>
     )
   }
 
   return (
-    <div className="columns-2 gap-3 sm:columns-3 md:columns-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
       {photos.map((photo, index) => {
         const src = resolveMediaUrl(photo.thumbnailUrl || photo.imageUrl)
         const fav = isFav(photo)
         return (
           <div
             key={photo.id}
-            className="mb-3 break-inside-avoid rounded-lg bg-white shadow-sm ring-1 ring-gray-100"
+            className="flex flex-col overflow-hidden rounded-xl border border-rose-200/90 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
           >
             <button
               type="button"
-              className="relative block w-full cursor-zoom-in overflow-hidden rounded-t-lg text-left"
+              className="relative aspect-square w-full cursor-zoom-in overflow-hidden text-left outline-none ring-rose-400/0 transition-[box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-rose-400/50"
               onClick={() => onPhotoClick(index)}
             >
-              <img src={src} alt="" className="w-full object-cover" loading="lazy" />
+              <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
             </button>
-            <div className="flex items-center justify-end gap-1 px-2 py-1.5">
+            <div className="flex min-h-[40px] items-center justify-end gap-1 border-t border-rose-100/90 px-1.5 py-1">
               <Button
                 type="text"
                 size="small"
                 aria-label={fav ? '取消收藏' : '收藏'}
-                icon={fav ? <HeartFilled className="!text-rose-500" /> : <HeartOutlined />}
+                icon={
+                  fav ? (
+                    <HeartFilled className="!text-rose-600" />
+                  ) : (
+                    <HeartOutlined className="text-rose-400" />
+                  )
+                }
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleFavorite(photo, !fav)

@@ -70,7 +70,9 @@ export default function PhotoViewer({
           <Button
             type="text"
             className="!text-white hover:!bg-white/10"
-            icon={fav ? <HeartFilled className="!text-rose-400" /> : <HeartOutlined />}
+            icon={
+              fav ? <HeartFilled className="!text-rose-400" /> : <HeartOutlined className="!text-white/70" />
+            }
             onClick={() => onToggleFavorite(current, !fav)}
           />
           <Button
