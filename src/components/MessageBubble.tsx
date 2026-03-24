@@ -1,4 +1,4 @@
-import { Typography } from 'antd'
+import { Button, Popconfirm, Typography } from 'antd'
 import dayjs from 'dayjs'
 
 export type ChatMessage = {
@@ -18,9 +18,12 @@ export type ChatMessage = {
 type MessageBubbleProps = {
   message: ChatMessage
   isMine: boolean
+  onRetract?: (messageId: string) => Promise<void> | void
 }
 
-export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
+export default function MessageBubble({ message, isMine, onRetract }: MessageBubbleProps) {
+  const canRetract =
+    isMine && message.isRetracted === 0 && dayjs().diff(dayjs(message.createdAt), 'second') <= 120
   const bubbleClass = isMine
     ? 'bg-rose-500 text-white border-rose-400'
     : 'bg-white text-rose-950 border-rose-200'
@@ -44,6 +47,22 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
         </Typography.Paragraph>
 
         <div className="flex items-center justify-end gap-2 text-[11px] opacity-80">
+          {canRetract ? (
+            <Popconfirm
+              title="确认撤回这条消息？"
+              okText="撤回"
+              cancelText="取消"
+              onConfirm={() => onRetract?.(message.id)}
+            >
+              <Button
+                type="link"
+                size="small"
+                className={`${isMine ? '!text-white/90 hover:!text-white' : '!text-rose-700'}`}
+              >
+                撤回
+              </Button>
+            </Popconfirm>
+          ) : null}
           <span>{dayjs(message.createdAt).format('MM-DD HH:mm')}</span>
           {readLabel ? <span>{readLabel}</span> : null}
         </div>

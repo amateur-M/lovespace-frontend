@@ -71,6 +71,14 @@ export default function ChatPage() {
     () => messages.filter((m) => m.receiverId === meId && m.isRead === 0 && m.isRetracted === 0).length,
     [meId, messages],
   )
+  const latestMessage = useMemo(() => (messages.length > 0 ? messages[0] : null), [messages])
+
+  const latestPreview = useMemo(() => {
+    if (!latestMessage) return '你们的私密会话'
+    if (latestMessage.isRetracted === 1) return '一条消息已撤回'
+    const prefix = latestMessage.senderId === meId ? '你：' : ''
+    return `${prefix}${latestMessage.content}`
+  }, [latestMessage, meId])
 
   const markVisibleMessagesRead = useCallback(async () => {
     if (!meId) return
@@ -135,6 +143,21 @@ export default function ChatPage() {
     [coupleId, partner?.id],
   )
 
+  const onRetract = useCallback(async (messageId: string) => {
+    try {
+      const { data } = await http.post<ApiResponse<null>>(`/api/v1/messages/${messageId}/retract`)
+      if (data.code !== 0) {
+        throw new Error(data.message || '撤回失败')
+      }
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, isRetracted: 1, content: '此消息已撤回' } : m)),
+      )
+      antdMessage.success('消息已撤回')
+    } catch (e) {
+      antdMessage.error(e instanceof Error ? e.message : '撤回失败（仅允许发送后 2 分钟内）')
+    }
+  }, [])
+
   if (!isAuthed) {
     return <Navigate to="/login" replace />
   }
@@ -180,7 +203,12 @@ export default function ChatPage() {
                     <Badge count={unreadCount} size="small" />
                   </div>
                 }
-                description="你们的私密会话"
+                description={
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="line-clamp-1 max-w-[150px]">{latestPreview}</span>
+                    {latestMessage ? <span>{dayjs(latestMessage.createdAt).format('MM-DD HH:mm')}</span> : null}
+                  </div>
+                }
               />
             </List.Item>
           )}
@@ -205,7 +233,14 @@ export default function ChatPage() {
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           ) : (
-            messages.map((m) => <MessageBubble key={m.id} message={m} isMine={m.senderId === meId} />)
+            messages.map((m) => (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                isMine={m.senderId === meId}
+                onRetract={onRetract}
+              />
+            ))
           )}
         </div>
 
