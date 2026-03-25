@@ -28,6 +28,9 @@ export default function ChatPage() {
 
   const [messages, setMessages] = useState<MessageListItem[]>([])
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [sending, setSending] = useState(false)
 
   const coupleId = coupleInfo?.bindingId ?? ''
@@ -36,6 +39,7 @@ export default function ChatPage() {
 
   const wsRef = useRef<WebSocket | null>(null)
   const wsConnectedRef = useRef(false)
+  const chatBodyRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!isAuthed) return
@@ -45,45 +49,75 @@ export default function ChatPage() {
   const upsertMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => {
       const idx = prev.findIndex((m) => m.id === msg.id)
-      const next = idx >= 0 ? prev.map((m) => (m.id === msg.id ? msg : m)) : [msg, ...prev]
-      return next.sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf())
+      const next = idx >= 0 ? prev.map((m) => (m.id === msg.id ? msg : m)) : [...prev, msg]
+      return next.sort((a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf())
     })
   }, [])
 
-  const loadMessages = useCallback(async () => {
+  const scrollToBottom = useCallback(() => {
+    const el = chatBodyRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [])
+
+  const formatSessionTime = useCallback((raw?: string | null) => {
+    if (!raw) return ''
+    const t = dayjs(raw)
+    const now = dayjs()
+    if (t.isSame(now, 'day')) return t.format('HH:mm')
+    if (t.isSame(now.subtract(1, 'day'), 'day')) return '昨天'
+    const weeks = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    return weeks[t.day()]
+  }, [])
+
+  const fetchMessagesByPage = useCallback(async (page: number) => {
     if (!coupleId) return
-    setLoadingMessages(true)
+    if (page <= 1) setLoadingMessages(true)
+    else setLoadingMore(true)
     try {
       const { data } = await http.get<ApiResponse<MessageListItem[]>>('/api/v1/messages', {
-        params: { coupleId, page: 1, pageSize: DEFAULT_PAGE_SIZE },
+        params: { coupleId, page, pageSize: DEFAULT_PAGE_SIZE },
       })
       if (data.code !== 0 || !data.data) {
         throw new Error(data.message || '加载消息失败')
       }
-      const sorted = [...data.data].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf())
-      setMessages(sorted)
+      const ascending = [...data.data].sort((a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf())
+      if (page === 1) {
+        setMessages(ascending)
+      } else {
+        setMessages((prev) => {
+          const map = new Map<string, MessageListItem>()
+          for (const m of [...ascending, ...prev]) map.set(m.id, m)
+          return [...map.values()].sort((a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf())
+        })
+      }
+      setCurrentPage(page)
+      setHasMore(data.data.length >= DEFAULT_PAGE_SIZE)
     } catch (e) {
       antdMessage.error(e instanceof Error ? e.message : '加载消息失败')
     } finally {
       setLoadingMessages(false)
+      setLoadingMore(false)
     }
   }, [coupleId])
 
   useEffect(() => {
     if (!coupleId) return
-    loadMessages()
+    fetchMessagesByPage(1).then(() => {
+      setTimeout(scrollToBottom, 0)
+    })
     // 暂时按需求关闭轮询，仅保留 WebSocket 实时增量。
     // const timer = window.setInterval(() => {
-    //   loadMessages().catch(() => undefined)
+    //   fetchMessagesByPage(1).catch(() => undefined)
     // }, 10000)
     // return () => window.clearInterval(timer)
-  }, [coupleId, loadMessages])
+  }, [coupleId, fetchMessagesByPage, scrollToBottom])
 
   const unreadCount = useMemo(
     () => messages.filter((m) => m.receiverId === meId && m.isRead === 0 && m.isRetracted === 0).length,
     [meId, messages],
   )
-  const latestMessage = useMemo(() => (messages.length > 0 ? messages[0] : null), [messages])
+  const latestMessage = useMemo(() => (messages.length > 0 ? messages[messages.length - 1] : null), [messages])
 
   const latestPreview = useMemo(() => {
     if (!latestMessage) return '你们的私密会话'
@@ -202,7 +236,13 @@ export default function ChatPage() {
           try {
             const payload = JSON.parse(evt.data)
             if (payload?.type === 'privateMessage' && payload?.data) {
+              const el = chatBodyRef.current
+              const nearBottom =
+                !!el && el.scrollHeight - el.scrollTop - el.clientHeight < 120
               upsertMessage(payload.data as ChatMessage)
+              if (nearBottom) {
+                setTimeout(scrollToBottom, 0)
+              }
               return
             }
             if (payload?.type === 'error') {
@@ -236,7 +276,20 @@ export default function ChatPage() {
         // ignore
       }
     }
-  }, [coupleId, meId, partner, upsertMessage])
+  }, [coupleId, meId, partner, scrollToBottom, upsertMessage])
+
+  const onMessageScroll = useCallback(async () => {
+    const el = chatBodyRef.current
+    if (!el || loadingMore || loadingMessages || !hasMore) return
+    if (el.scrollTop > 40) return
+    const prevHeight = el.scrollHeight
+    await fetchMessagesByPage(currentPage + 1)
+    setTimeout(() => {
+      const nowEl = chatBodyRef.current
+      if (!nowEl) return
+      nowEl.scrollTop = nowEl.scrollHeight - prevHeight
+    }, 0)
+  }, [currentPage, fetchMessagesByPage, hasMore, loadingMessages, loadingMore])
 
   if (!isAuthed) {
     return <Navigate to="/login" replace />
@@ -274,7 +327,7 @@ export default function ChatPage() {
         <List
           dataSource={[partner]}
           renderItem={(item) => (
-            <List.Item className="!cursor-pointer !rounded-xl !border !border-rose-200 !px-3 !py-2 hover:!bg-rose-50/80">
+            <List.Item className="!cursor-pointer !border-b !border-rose-200 !px-2 !py-3 last:!border-b-0 hover:!bg-rose-50/80">
               <List.Item.Meta
                 avatar={<Avatar src={item.avatarUrl ?? undefined}>{item.username.slice(0, 1).toUpperCase()}</Avatar>}
                 title={
@@ -286,7 +339,7 @@ export default function ChatPage() {
                 description={
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="line-clamp-1 max-w-[150px]">{latestPreview}</span>
-                    {latestMessage ? <span>{dayjs(latestMessage.createdAt).format('MM-DD HH:mm')}</span> : null}
+                    {latestMessage ? <span>{formatSessionTime(latestMessage.createdAt)}</span> : null}
                   </div>
                 }
               />
@@ -295,14 +348,21 @@ export default function ChatPage() {
         />
       </aside>
 
-      <section className="ls-surface flex min-h-[70vh] flex-col overflow-hidden">
+      <section className="ls-surface flex h-[calc(100vh-190px)] min-h-[540px] flex-col overflow-hidden">
         <div className="border-b border-rose-200/90 bg-rose-50/70 px-4 py-3">
           <Typography.Title level={5} className="!mb-0 !text-rose-950">
             与 {partner.username} 的聊天
           </Typography.Title>
         </div>
 
-        <div className="flex-1 space-y-3 overflow-y-auto bg-rose-50/40 p-4">
+        <div
+          ref={chatBodyRef}
+          onScroll={onMessageScroll}
+          className="flex-1 space-y-3 overflow-y-auto bg-rose-50/40 p-4"
+        >
+          {loadingMore ? (
+            <div className="mb-2 text-center text-xs text-rose-700/70">正在加载更早消息...</div>
+          ) : null}
           {loadingMessages ? (
             <div className="flex justify-center py-10">
               <Spin />

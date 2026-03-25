@@ -1,4 +1,4 @@
-import { Button, Input, Space } from 'antd'
+import { Button, Input } from 'antd'
 import { useMemo, useState } from 'react'
 import type { Dayjs } from 'dayjs'
 import ScheduledPicker from './ScheduledPicker'
@@ -38,18 +38,22 @@ export default function MessageInput({ sending = false, onSend }: MessageInputPr
         onEnabledChange={setScheduledEnabled}
         onChange={setScheduledTime}
       />
-      <Space.Compact className="w-full">
+      <div className="flex items-end gap-2 rounded-2xl border border-rose-200 bg-rose-50/40 p-2">
         <Input.TextArea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="写下想说的话..."
           autoSize={{ minRows: 2, maxRows: 5 }}
           maxLength={5000}
-          showCount
+          className="!border-0 !bg-transparent !shadow-none"
         />
-      </Space.Compact>
-      <div className="flex justify-end">
-        <Button type="primary" onClick={submit} loading={sending} disabled={!canSubmit}>
+        <Button
+          type="primary"
+          onClick={submit}
+          loading={sending}
+          disabled={!canSubmit}
+          className="shrink-0 rounded-xl"
+        >
           发送
         </Button>
       </div>
