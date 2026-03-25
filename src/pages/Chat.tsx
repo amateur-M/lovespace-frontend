@@ -1,7 +1,7 @@
 import { Avatar, Badge, Button, Empty, List, Spin, Typography, message as antdMessage } from 'antd'
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import MessageBubble, { type ChatMessage } from '../components/MessageBubble'
 import MessageInput from '../components/MessageInput'
@@ -34,10 +34,21 @@ export default function ChatPage() {
   const partner = coupleInfo?.partner ?? null
   const meId = me?.id ?? ''
 
+  const wsRef = useRef<WebSocket | null>(null)
+  const wsConnectedRef = useRef(false)
+
   useEffect(() => {
     if (!isAuthed) return
     fetchCoupleInfo().catch(() => undefined)
   }, [fetchCoupleInfo, isAuthed])
+
+  const upsertMessage = useCallback((msg: ChatMessage) => {
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === msg.id)
+      const next = idx >= 0 ? prev.map((m) => (m.id === msg.id ? msg : m)) : [msg, ...prev]
+      return next.sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf())
+    })
+  }, [])
 
   const loadMessages = useCallback(async () => {
     if (!coupleId) return
@@ -61,10 +72,11 @@ export default function ChatPage() {
   useEffect(() => {
     if (!coupleId) return
     loadMessages()
-    const timer = window.setInterval(() => {
-      loadMessages().catch(() => undefined)
-    }, 10000)
-    return () => window.clearInterval(timer)
+    // 暂时按需求关闭轮询，仅保留 WebSocket 实时增量。
+    // const timer = window.setInterval(() => {
+    //   loadMessages().catch(() => undefined)
+    // }, 10000)
+    // return () => window.clearInterval(timer)
   }, [coupleId, loadMessages])
 
   const unreadCount = useMemo(
@@ -111,27 +123,30 @@ export default function ChatPage() {
       if (!coupleId || !partner?.id) return
       setSending(true)
       try {
-        const endpoint = scheduledTime ? '/api/v1/messages/scheduled' : '/api/v1/messages/send'
-        const payload = scheduledTime
-          ? {
-              coupleId,
-              receiverId: partner.id,
-              content,
-              messageType: 'text',
-              scheduledTime: scheduledTime.format('YYYY-MM-DDTHH:mm:ss'),
-            }
-          : {
-              coupleId,
-              receiverId: partner.id,
-              content,
-              messageType: 'text',
-            }
-        const { data } = await http.post<ApiResponse<MessageListItem>>(endpoint, payload)
-        if (data.code !== 0 || !data.data) {
-          throw new Error(data.message || '发送失败')
+        const ws = wsRef.current
+        if (!ws || !wsConnectedRef.current || ws.readyState !== WebSocket.OPEN) {
+          throw new Error('WebSocket 未连接，请稍后重试')
         }
-        setMessages((prev) =>
-          [data.data, ...prev].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf()),
+
+        ws.send(
+          JSON.stringify(
+            scheduledTime
+              ? {
+                  type: 'scheduled',
+                  coupleId,
+                  receiverId: partner.id,
+                  content,
+                  messageType: 'text',
+                  scheduledTime: scheduledTime.format('YYYY-MM-DDTHH:mm:ss'),
+                }
+              : {
+                  type: 'send',
+                  coupleId,
+                  receiverId: partner.id,
+                  content,
+                  messageType: 'text',
+                },
+          ),
         )
         antdMessage.success(scheduledTime ? '定时消息已创建' : '发送成功')
       } catch (e) {
@@ -157,6 +172,71 @@ export default function ChatPage() {
       antdMessage.error(e instanceof Error ? e.message : '撤回失败（仅允许发送后 2 分钟内）')
     }
   }, [])
+
+  // WebSocket：实时增量推送（仍保留轮询 loadMessages 作为兜底）
+  useEffect(() => {
+    if (!coupleId || !partner || !meId) return
+    const token = localStorage.getItem('lovespace_token')
+    if (!token) return
+
+    const apiBase = import.meta.env.VITE_API_BASE_URL as string | undefined
+    const wsBase = apiBase?.startsWith('http')
+      ? apiBase.replace(/^http/, 'ws').replace(/\/$/, '')
+      : 'ws://127.0.0.1:8081'
+    const wsUrl = `${wsBase}/ws/chat?token=${encodeURIComponent(token)}`
+
+    let alive = true
+    const connect = () => {
+      try {
+        const ws = new WebSocket(wsUrl)
+        wsRef.current = ws
+        wsConnectedRef.current = false
+
+        ws.onopen = () => {
+          if (!alive) return
+          wsConnectedRef.current = true
+          ws.send(JSON.stringify({ type: 'subscribe', coupleId }))
+        }
+
+        ws.onmessage = (evt) => {
+          try {
+            const payload = JSON.parse(evt.data)
+            if (payload?.type === 'privateMessage' && payload?.data) {
+              upsertMessage(payload.data as ChatMessage)
+              return
+            }
+            if (payload?.type === 'error') {
+              antdMessage.error(payload.message || 'WebSocket error')
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        ws.onclose = () => {
+          wsConnectedRef.current = false
+          if (!alive) return
+          window.setTimeout(connect, 3000)
+        }
+
+        ws.onerror = () => {
+          wsConnectedRef.current = false
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    connect()
+    return () => {
+      alive = false
+      try {
+        wsRef.current?.close()
+      } catch {
+        // ignore
+      }
+    }
+  }, [coupleId, meId, partner, upsertMessage])
 
   if (!isAuthed) {
     return <Navigate to="/login" replace />
