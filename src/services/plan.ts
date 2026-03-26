@@ -106,6 +106,14 @@ export type CreatePlanTaskBody = {
   dueDate?: string | null
 }
 
+/** 与后端 PlanTaskReplaceRequest 一致：整表更新任务。 */
+export type PlanTaskReplaceBody = {
+  title: string
+  assigneeId?: string | null
+  dueDate?: string | null
+  completed: boolean
+}
+
 export async function listPlans(coupleId: string) {
   const { data } = await http.get<ApiResponse<Plan[]>>('/api/v1/plans', { params: { coupleId } })
   if (data.code !== 0 || data.data == null) return data
@@ -136,8 +144,13 @@ export async function createPlanTask(planId: string, body: CreatePlanTaskBody) {
   return { ...data, data: normalizePlanTask(data.data) }
 }
 
-export async function completePlanTask(planId: string, taskId: string) {
-  const { data } = await http.put<ApiResponse<PlanTask>>(`/api/v1/plans/${planId}/tasks/${taskId}`)
+export async function updatePlanTask(planId: string, taskId: string, body: PlanTaskReplaceBody) {
+  const { data } = await http.put<ApiResponse<PlanTask>>(`/api/v1/plans/${planId}/tasks/${taskId}`, body)
   if (data.code !== 0 || data.data == null) return data
   return { ...data, data: normalizePlanTask(data.data) }
+}
+
+export async function deletePlanTask(planId: string, taskId: string) {
+  const { data } = await http.delete<ApiResponse<unknown>>(`/api/v1/plans/${planId}/tasks/${taskId}`)
+  return data
 }

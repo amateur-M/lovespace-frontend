@@ -1,5 +1,10 @@
-import { CheckCircleOutlined } from '@ant-design/icons'
-import { Button } from 'antd'
+import {
+  CheckCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  MoreOutlined,
+} from '@ant-design/icons'
+import { Dropdown, Modal } from 'antd'
 import dayjs from 'dayjs'
 import type { PlanTask } from '../services/plan'
 
@@ -7,8 +12,11 @@ type TaskItemProps = {
   task: PlanTask
   currentUserId: string
   partnerUserId?: string
-  onComplete: () => void | Promise<void>
-  completing?: boolean
+  onToggleComplete: () => void | Promise<void>
+  onEdit: () => void
+  onDelete: () => void
+  toggleLoading?: boolean
+  deleteLoading?: boolean
 }
 
 function assigneeLabel(task: PlanTask, currentUserId: string, partnerUserId?: string): string {
@@ -21,21 +29,78 @@ function assigneeLabel(task: PlanTask, currentUserId: string, partnerUserId?: st
 }
 
 /**
- * 单条子任务：完成按钮与截止日、负责人。
+ * 单条子任务：与时间轴记录一致，右上角「⋯」菜单（完成状态、编辑、删除）。
  */
-export default function TaskItem({ task, currentUserId, partnerUserId, onComplete, completing }: TaskItemProps) {
+export default function TaskItem({
+  task,
+  currentUserId,
+  partnerUserId,
+  onToggleComplete,
+  onEdit,
+  onDelete,
+  toggleLoading,
+  deleteLoading,
+}: TaskItemProps) {
   const done = Boolean(task.completed)
   const title = task.title?.trim() || '（无标题）'
 
+  const toggleLabel = done ? '标记为未完成' : '标记为已完成'
+
   return (
     <div
-      className={`flex flex-col gap-2 rounded-lg border px-3 py-2.5 transition-colors duration-200 sm:flex-row sm:items-center sm:justify-between ${
-        done
-          ? 'border-emerald-200/80 bg-emerald-50/50'
-          : 'border-rose-200/80 bg-white hover:border-rose-300/90'
+      className={`relative rounded-xl border border-rose-200/90 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow-md ${
+        done ? '!border-emerald-200/90 !bg-emerald-50/50' : ''
       }`}
     >
-      <div className="min-w-0 flex-1">
+      <div className="absolute right-2 top-2 z-10">
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: [
+              {
+                key: 'toggle',
+                label: toggleLabel,
+                icon: <CheckCircleOutlined />,
+                disabled: toggleLoading,
+                onClick: () => void onToggleComplete(),
+              },
+              {
+                key: 'edit',
+                label: '编辑',
+                icon: <EditOutlined />,
+                onClick: () => onEdit(),
+              },
+              {
+                key: 'delete',
+                danger: true,
+                label: '删除',
+                icon: <DeleteOutlined />,
+                disabled: deleteLoading,
+                onClick: () => {
+                  Modal.confirm({
+                    title: '删除该任务？',
+                    content: '删除后无法恢复。',
+                    okText: '删除',
+                    okType: 'danger',
+                    cancelText: '取消',
+                    onOk: () => onDelete(),
+                  })
+                },
+              },
+            ],
+          }}
+        >
+          <button
+            type="button"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-rose-700/80 transition-colors hover:bg-rose-50 hover:text-rose-900"
+            aria-label="任务操作"
+          >
+            <MoreOutlined />
+          </button>
+        </Dropdown>
+      </div>
+
+      <div className="pr-8">
         <div className="flex items-start gap-2">
           {done ? (
             <CheckCircleOutlined className="mt-0.5 shrink-0 text-emerald-600" aria-hidden />
@@ -51,26 +116,11 @@ export default function TaskItem({ task, currentUserId, partnerUserId, onComplet
             <p className="mt-0.5 text-xs text-rose-800/65">
               {assigneeLabel(task, currentUserId, partnerUserId)}
               {task.dueDate ? ` · 截止 ${dayjs(task.dueDate).format('YYYY-MM-DD')}` : ''}
+              {done && task.completedAt ? ` · 完成于 ${dayjs(task.completedAt).format('MM-DD HH:mm')}` : ''}
             </p>
           </div>
         </div>
       </div>
-      {!done ? (
-        <Button
-          type="primary"
-          size="small"
-          loading={completing}
-          className="shrink-0 cursor-pointer"
-          onClick={() => void onComplete()}
-          aria-label={`将任务「${title}」标为完成`}
-        >
-          完成
-        </Button>
-      ) : task.completedAt ? (
-        <span className="shrink-0 text-xs text-emerald-800/70">
-          {dayjs(task.completedAt).format('MM-DD HH:mm')}
-        </span>
-      ) : null}
     </div>
   )
 }

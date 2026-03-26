@@ -1,24 +1,29 @@
 import { PlusOutlined, UnorderedListOutlined } from '@ant-design/icons'
-import { Button, DatePicker, Empty, Form, Input, Select, Space, Spin, Typography, message } from 'antd'
+import { Button, Empty, Form, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import PlanCard from '../components/PlanCard'
 import PlanForm, { type PlanFormValues } from '../components/PlanForm'
+import TaskFormModal, { applyTaskToForm, type TaskFormValues } from '../components/TaskFormModal'
 import TaskItem from '../components/TaskItem'
 import {
-  completePlanTask,
   createPlan,
   createPlanTask,
+  deletePlan,
+  deletePlanTask,
   getPlanTasks,
   listPlans,
   updatePlan,
+  updatePlanTask,
   type CreatePlanBody,
   type Plan,
+  type PlanTask,
+  type PlanTaskReplaceBody,
+  type UpdatePlanBody,
 } from '../services/plan'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
 import { computeTaskProgressPercent } from '../utils/planProgress'
-import dayjs from 'dayjs'
 
 export default function PlanPage() {
   const isAuthed = useAuthStore((s) => s.isAuthed)
@@ -33,13 +38,22 @@ export default function PlanPage() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [plansLoading, setPlansLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [creating, setCreating] = useState(false)
-  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null)
-  const [addingTask, setAddingTask] = useState(false)
+
+  const [planModalOpen, setPlanModalOpen] = useState(false)
+  const [planModalMode, setPlanModalMode] = useState<'create' | 'edit'>('create')
+  const [editingPlanForModal, setEditingPlanForModal] = useState<Plan | null>(null)
+  const [planSaving, setPlanSaving] = useState(false)
+
+  const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [taskModalMode, setTaskModalMode] = useState<'create' | 'edit'>('create')
+  const [editingTask, setEditingTask] = useState<PlanTask | null>(null)
+  const [taskModalSubmitting, setTaskModalSubmitting] = useState(false)
+
+  const [togglingTaskId, setTogglingTaskId] = useState<string | null>(null)
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
 
   const [planForm] = Form.useForm<PlanFormValues>()
-  const [taskForm] = Form.useForm<{ title: string; assigneeId?: string; dueDate?: dayjs.Dayjs | null }>()
+  const [taskModalForm] = Form.useForm<TaskFormValues>()
 
   useEffect(() => {
     if (!isAuthed) return
@@ -91,7 +105,6 @@ export default function PlanPage() {
     [selectedPlan],
   )
 
-  /** 任务变更后根据子任务比例回写服务端 progress，再刷新列表。 */
   const refreshAndSyncProgress = useCallback(
     async (planId: string) => {
       if (!coupleId) return
@@ -110,61 +123,165 @@ export default function PlanPage() {
     [coupleId, refreshPlans],
   )
 
+  const openCreatePlanModal = () => {
+    setPlanModalMode('create')
+    setEditingPlanForModal(null)
+    setPlanModalOpen(true)
+  }
+
+  const openEditPlanModal = (plan: Plan) => {
+    setPlanModalMode('edit')
+    setEditingPlanForModal(plan)
+    setPlanModalOpen(true)
+  }
+
   const handleCreatePlan = async (body: CreatePlanBody) => {
-    setCreating(true)
+    setPlanSaving(true)
     try {
       const resp = await createPlan(body)
       if (resp.code !== 0 || !resp.data) {
         throw new Error(resp.message || '创建失败')
       }
       message.success('已创建计划')
-      setCreateOpen(false)
+      setPlanModalOpen(false)
       planForm.resetFields()
       await refreshPlans()
       setSelectedId(resp.data.id)
     } catch (e) {
       message.error(e instanceof Error ? e.message : '创建失败')
     } finally {
-      setCreating(false)
+      setPlanSaving(false)
     }
   }
 
-  const handleCompleteTask = async (planId: string, taskId: string) => {
-    setCompletingTaskId(taskId)
+  const handleUpdatePlan = async (planId: string, body: UpdatePlanBody) => {
+    setPlanSaving(true)
     try {
-      const resp = await completePlanTask(planId, taskId)
+      const resp = await updatePlan(planId, body)
+      if (resp.code !== 0 || !resp.data) {
+        throw new Error(resp.message || '保存失败')
+      }
+      message.success('计划已更新')
+      setPlanModalOpen(false)
+      setEditingPlanForModal(null)
+      await refreshPlans()
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '保存失败')
+    } finally {
+      setPlanSaving(false)
+    }
+  }
+
+  const handleDeletePlan = async (plan: Plan) => {
+    setPlanSaving(true)
+    try {
+      const resp = await deletePlan(plan.id)
+      if (resp.code !== 0) {
+        throw new Error(resp.message || '删除失败')
+      }
+      message.success('已删除计划')
+      await refreshPlans()
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '删除失败')
+    } finally {
+      setPlanSaving(false)
+    }
+  }
+
+  const toReplaceBody = (v: TaskFormValues): PlanTaskReplaceBody => ({
+    title: v.title.trim(),
+    assigneeId: v.assigneeId ?? null,
+    dueDate: v.dueDate ? v.dueDate.format('YYYY-MM-DD') : null,
+    completed: Boolean(v.completed),
+  })
+
+  const openAddTaskModal = () => {
+    if (!selectedPlan) return
+    setTaskModalMode('create')
+    setEditingTask(null)
+    taskModalForm.resetFields()
+    taskModalForm.setFieldsValue({ title: '', assigneeId: undefined, dueDate: null, completed: false })
+    setTaskModalOpen(true)
+  }
+
+  const openEditTaskModal = (task: PlanTask) => {
+    setTaskModalMode('edit')
+    setEditingTask(task)
+    applyTaskToForm(taskModalForm, task)
+    setTaskModalOpen(true)
+  }
+
+  const handleTaskModalSubmit = async (values: TaskFormValues) => {
+    if (!selectedPlan) return
+    setTaskModalSubmitting(true)
+    try {
+      if (taskModalMode === 'create') {
+        const resp = await createPlanTask(selectedPlan.id, {
+          title: values.title.trim(),
+          assigneeId: values.assigneeId ?? null,
+          dueDate: values.dueDate ? values.dueDate.format('YYYY-MM-DD') : null,
+        })
+        if (resp.code !== 0 || !resp.data) {
+          throw new Error(resp.message || '添加失败')
+        }
+        message.success('已添加任务')
+      } else if (editingTask) {
+        const body = toReplaceBody(values)
+        const resp = await updatePlanTask(selectedPlan.id, editingTask.id, body)
+        if (resp.code !== 0 || !resp.data) {
+          throw new Error(resp.message || '保存失败')
+        }
+        message.success('任务已更新')
+      }
+      setTaskModalOpen(false)
+      setEditingTask(null)
+      taskModalForm.resetFields()
+      await refreshAndSyncProgress(selectedPlan.id)
+    } catch (e) {
+      if (e && typeof e === 'object' && 'errorFields' in e) return
+      message.error(e instanceof Error ? e.message : '操作失败')
+    } finally {
+      setTaskModalSubmitting(false)
+    }
+  }
+
+  const handleToggleTaskComplete = async (task: PlanTask) => {
+    if (!selectedPlan) return
+    setTogglingTaskId(task.id)
+    try {
+      const body: PlanTaskReplaceBody = {
+        title: task.title,
+        assigneeId: task.assigneeId ?? null,
+        dueDate: task.dueDate ?? null,
+        completed: !task.completed,
+      }
+      const resp = await updatePlanTask(selectedPlan.id, task.id, body)
       if (resp.code !== 0 || !resp.data) {
         throw new Error(resp.message || '操作失败')
       }
-      message.success('任务已完成')
-      await refreshAndSyncProgress(planId)
+      message.success(body.completed ? '已标记完成' : '已标记未完成')
+      await refreshAndSyncProgress(selectedPlan.id)
     } catch (e) {
       message.error(e instanceof Error ? e.message : '操作失败')
     } finally {
-      setCompletingTaskId(null)
+      setTogglingTaskId(null)
     }
   }
 
-  const handleAddTask = async (planId: string) => {
-    const v = await taskForm.validateFields()
-    setAddingTask(true)
+  const handleDeleteTask = async (task: PlanTask) => {
+    if (!selectedPlan) return
+    setDeletingTaskId(task.id)
     try {
-      const resp = await createPlanTask(planId, {
-        title: v.title.trim(),
-        assigneeId: v.assigneeId ?? null,
-        dueDate: v.dueDate ? v.dueDate.format('YYYY-MM-DD') : null,
-      })
-      if (resp.code !== 0 || !resp.data) {
-        throw new Error(resp.message || '添加失败')
+      const resp = await deletePlanTask(selectedPlan.id, task.id)
+      if (resp.code !== 0) {
+        throw new Error(resp.message || '删除失败')
       }
-      message.success('已添加任务')
-      taskForm.resetFields()
-      await refreshAndSyncProgress(planId)
+      message.success('已删除任务')
+      await refreshAndSyncProgress(selectedPlan.id)
     } catch (e) {
-      if (e && typeof e === 'object' && 'errorFields' in e) return
-      message.error(e instanceof Error ? e.message : '添加失败')
+      message.error(e instanceof Error ? e.message : '删除失败')
     } finally {
-      setAddingTask(false)
+      setDeletingTaskId(null)
     }
   }
 
@@ -189,7 +306,7 @@ export default function PlanPage() {
           size="large"
           disabled={!coupleId}
           className="cursor-pointer self-start shadow-sm"
-          onClick={() => setCreateOpen(true)}
+          onClick={openCreatePlanModal}
         >
           新建计划
         </Button>
@@ -233,6 +350,8 @@ export default function PlanPage() {
                       compact
                       selected={p.id === selectedId}
                       onClick={() => setSelectedId(p.id)}
+                      onEdit={() => openEditPlanModal(p)}
+                      onDelete={() => void handleDeletePlan(p)}
                     />
                   </li>
                 ))}
@@ -246,12 +365,22 @@ export default function PlanPage() {
               <div className="ls-surface p-10 text-center text-sm text-rose-800/70">请选择左侧计划</div>
             ) : (
               <div className="space-y-5">
-                <PlanCard plan={selectedPlan} compact={false} />
+                <PlanCard
+                  plan={selectedPlan}
+                  compact={false}
+                  onEdit={() => openEditPlanModal(selectedPlan)}
+                  onDelete={() => void handleDeletePlan(selectedPlan)}
+                />
 
                 <div className="ls-surface p-5">
-                  <Typography.Title level={5} className="!mb-4 !text-rose-950">
-                    任务清单
-                  </Typography.Title>
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <Typography.Title level={5} className="!mb-0 !text-rose-950">
+                      任务清单
+                    </Typography.Title>
+                    <Button type="primary" icon={<PlusOutlined />} className="cursor-pointer" onClick={openAddTaskModal}>
+                      添加任务
+                    </Button>
+                  </div>
                   <div className="flex flex-col gap-2">
                     {selectedTasks.map((t, idx) => (
                       <TaskItem
@@ -259,55 +388,17 @@ export default function PlanPage() {
                         task={t}
                         currentUserId={currentUserId}
                         partnerUserId={partnerId}
-                        completing={completingTaskId === t.id}
-                        onComplete={() => handleCompleteTask(selectedPlan.id, t.id)}
+                        toggleLoading={togglingTaskId === t.id}
+                        deleteLoading={deletingTaskId === t.id}
+                        onToggleComplete={() => void handleToggleTaskComplete(t)}
+                        onEdit={() => openEditTaskModal(t)}
+                        onDelete={() => void handleDeleteTask(t)}
                       />
                     ))}
                     {!selectedTasks.length ? (
-                      <p className="text-sm text-rose-800/60">暂无子任务，可在下方添加。</p>
+                      <p className="text-sm text-rose-800/60">暂无子任务，可点击「添加任务」创建。</p>
                     ) : null}
                   </div>
-
-                  <Form
-                    form={taskForm}
-                    layout="vertical"
-                    className="mt-6 border-t border-rose-100 pt-5"
-                    onFinish={() => handleAddTask(selectedPlan.id)}
-                  >
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Form.Item
-                        name="title"
-                        label="新任务"
-                        rules={[{ required: true, message: '请输入任务标题' }]}
-                        className="!mb-0 sm:col-span-2"
-                      >
-                        <Input placeholder="任务标题" maxLength={200} />
-                      </Form.Item>
-                      <Form.Item name="assigneeId" label="负责人" className="!mb-0">
-                        <Select
-                          allowClear
-                          placeholder="可选"
-                          options={[
-                            ...(currentUserId ? [{ value: currentUserId, label: '我' }] : []),
-                            ...(partnerId ? [{ value: partnerId, label: 'Ta' }] : []),
-                          ]}
-                        />
-                      </Form.Item>
-                      <Form.Item name="dueDate" label="截止日期" className="!mb-0">
-                        <DatePicker className="w-full" format="YYYY-MM-DD" />
-                      </Form.Item>
-                    </div>
-                    <Space className="mt-3">
-                      <Button
-                        type="primary"
-                        htmlType="submit"
-                        loading={addingTask}
-                        className="cursor-pointer"
-                      >
-                        添加任务
-                      </Button>
-                    </Space>
-                  </Form>
                 </div>
               </div>
             )}
@@ -316,16 +407,36 @@ export default function PlanPage() {
       )}
 
       <PlanForm
-        open={createOpen}
-        modalTitle="新建共同计划"
-        confirmLoading={creating}
+        mode={planModalMode}
+        open={planModalOpen}
+        modalTitle={planModalMode === 'edit' ? '编辑计划' : '新建共同计划'}
+        confirmLoading={planSaving}
         coupleId={coupleId ?? ''}
+        editingPlan={planModalMode === 'edit' ? editingPlanForModal : null}
         form={planForm}
         onCancel={() => {
-          setCreateOpen(false)
+          setPlanModalOpen(false)
+          setEditingPlanForModal(null)
           planForm.resetFields()
         }}
-        onSubmit={handleCreatePlan}
+        onSubmitCreate={handleCreatePlan}
+        onSubmitUpdate={handleUpdatePlan}
+      />
+
+      <TaskFormModal
+        open={taskModalOpen}
+        mode={taskModalMode}
+        title={taskModalMode === 'edit' ? '编辑任务' : '添加任务'}
+        confirmLoading={taskModalSubmitting}
+        form={taskModalForm}
+        currentUserId={currentUserId}
+        partnerId={partnerId}
+        onCancel={() => {
+          setTaskModalOpen(false)
+          setEditingTask(null)
+          taskModalForm.resetFields()
+        }}
+        onSubmit={handleTaskModalSubmit}
       />
     </div>
   )

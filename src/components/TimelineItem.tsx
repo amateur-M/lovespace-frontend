@@ -1,4 +1,4 @@
-import { EditOutlined, EnvironmentOutlined, MoreOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined } from '@ant-design/icons'
 import { Dropdown, Image, Modal, Space, Typography } from 'antd'
 import MoodTag from './MoodTag'
 import { VISIBILITY_COUPLE, type LoveRecord } from '../services/timeline'
@@ -77,6 +77,7 @@ export default function TimelineItem({ record, currentUserId, onEdit, onDelete }
                   key: 'delete',
                   danger: true,
                   label: '删除',
+                  icon: <DeleteOutlined />,
                   onClick: () => {
                     Modal.confirm({
                       title: '删除这条记录？',

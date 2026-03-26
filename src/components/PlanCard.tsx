@@ -1,5 +1,5 @@
-import { CalendarOutlined, FlagOutlined } from '@ant-design/icons'
-import { Tag, Typography } from 'antd'
+import { CalendarOutlined, DeleteOutlined, EditOutlined, FlagOutlined, MoreOutlined } from '@ant-design/icons'
+import { Dropdown, Modal, Tag, Typography } from 'antd'
 import dayjs from 'dayjs'
 import type { Plan } from '../services/plan'
 import { displayPlanProgress } from '../utils/planProgress'
@@ -15,16 +15,20 @@ const PLAN_TYPE_LABEL: Record<string, string> = {
 type PlanCardProps = {
   plan: Plan
   selected?: boolean
+  /** 点击卡片主体（列表选中） */
   onClick?: () => void
   compact?: boolean
+  /** 与时间轴记录一致：右上角菜单 */
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 /**
  * 计划卡片：标题、类型、进度条、日期区间、预算摘要。
  *
- * <p>传入 {@code onClick} 时为可点击列表项；不传则渲染为静态卡片（详情区）。
+ * <p>传入 {@code onClick} 时主体可点击用于列表选中；{@code onEdit}/{@code onDelete} 时在右上角显示「⋯」菜单。
  */
-export default function PlanCard({ plan, selected, onClick, compact }: PlanCardProps) {
+export default function PlanCard({ plan, selected, onClick, compact, onEdit, onDelete }: PlanCardProps) {
   const progress = displayPlanProgress(plan)
   const typeLabel = PLAN_TYPE_LABEL[plan.planType] ?? plan.planType
   const hasRange = plan.startDate || plan.endDate
@@ -32,7 +36,9 @@ export default function PlanCard({ plan, selected, onClick, compact }: PlanCardP
     ? `${plan.startDate ? dayjs(plan.startDate).format('MM-DD') : '…'} — ${plan.endDate ? dayjs(plan.endDate).format('MM-DD') : '…'}`
     : null
 
-  const surfaceClass = `ls-surface w-full text-left transition-all duration-200 motion-reduce:transition-none ${
+  const showMenu = Boolean(onEdit && onDelete)
+
+  const surfaceClass = `relative w-full text-left transition-all duration-200 motion-reduce:transition-none ls-surface ${
     onClick ? 'cursor-pointer' : ''
   } ${
     onClick
@@ -44,7 +50,7 @@ export default function PlanCard({ plan, selected, onClick, compact }: PlanCardP
 
   const inner = (
     <>
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+      <div className={`mb-3 flex flex-wrap items-start justify-between gap-2 ${showMenu ? 'pr-8' : ''}`}>
         <div className="min-w-0 flex-1">
           <Typography.Title level={compact ? 5 : 4} className="!mb-1 !text-rose-950">
             {plan.title}
@@ -81,22 +87,74 @@ export default function PlanCard({ plan, selected, onClick, compact }: PlanCardP
     </>
   )
 
+  const menu = showMenu ? (
+    <div className="absolute right-2 top-2 z-10" onClick={(e) => e.stopPropagation()}>
+      <Dropdown
+        trigger={['click']}
+        menu={{
+          items: [
+            {
+              key: 'edit',
+              label: '编辑',
+              icon: <EditOutlined />,
+              onClick: () => onEdit?.(),
+            },
+            {
+              key: 'delete',
+              danger: true,
+              label: '删除',
+              icon: <DeleteOutlined />,
+              onClick: () => {
+                Modal.confirm({
+                  title: '删除该计划？',
+                  content: '其下全部任务将一并删除，且无法恢复。',
+                  okText: '删除',
+                  okType: 'danger',
+                  cancelText: '取消',
+                  onOk: () => onDelete?.(),
+                })
+              },
+            },
+          ],
+        }}
+      >
+        <button
+          type="button"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-rose-700/80 transition-colors hover:bg-rose-50 hover:text-rose-900"
+          aria-label="计划操作"
+        >
+          <MoreOutlined />
+        </button>
+      </Dropdown>
+    </div>
+  ) : null
+
   if (onClick) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={surfaceClass}
-        aria-pressed={selected}
-        aria-label={`计划 ${plan.title}`}
-      >
-        {inner}
-      </button>
+      <div className={surfaceClass} aria-label={`计划 ${plan.title}`}>
+        {menu}
+        <div
+          role="button"
+          tabIndex={0}
+          className="outline-none"
+          onClick={onClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClick()
+            }
+          }}
+          aria-pressed={selected}
+        >
+          {inner}
+        </div>
+      </div>
     )
   }
 
   return (
     <div className={surfaceClass} aria-label={`计划 ${plan.title}`}>
+      {menu}
       {inner}
     </div>
   )
