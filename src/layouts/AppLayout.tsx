@@ -29,6 +29,7 @@ export default function AppLayout() {
         { key: '/timeline', label: <Link to="/timeline">时间轴</Link> },
         { key: '/album', label: <Link to="/album">相册</Link> },
         { key: '/chat', label: <Link to="/chat">私密消息</Link> },
+        { key: '/plan', label: <Link to="/plan">共同计划</Link> },
       ]
     : baseMenuItems
   const selectedKeys = menuItems.map((i) => i.key).filter((k) => location.pathname === k)

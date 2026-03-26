@@ -10,6 +10,7 @@ import Profile from './pages/Profile'
 import Timeline from './pages/Timeline'
 import Album from './pages/Album'
 import Chat from './pages/Chat'
+import Plan from './pages/Plan'
 import Register from './pages/Register'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/album" element={<Album />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/plan" element={<Plan />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
