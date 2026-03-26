@@ -53,8 +53,18 @@ export async function deleteAlbum(albumId: string) {
   return data
 }
 
-export async function listAlbumPhotos(albumId: string) {
-  const { data } = await http.get<ApiResponse<AlbumPhoto[]>>(`/api/v1/albums/${albumId}/photos`)
+export type AlbumPhotoPage = {
+  total: number
+  page: number
+  pageSize: number
+  photos: AlbumPhoto[]
+}
+
+/** 分页列出相册照片，默认每页 10 条，按创建时间倒序。 */
+export async function listAlbumPhotos(albumId: string, page = 1, pageSize = 10) {
+  const { data } = await http.get<ApiResponse<AlbumPhotoPage>>(`/api/v1/albums/${albumId}/photos`, {
+    params: { page, pageSize },
+  })
   return data
 }
 

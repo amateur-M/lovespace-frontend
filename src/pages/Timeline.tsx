@@ -1,12 +1,12 @@
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
   Button,
-  Card,
   DatePicker,
   Divider,
   Empty,
   FloatButton,
   Modal,
+  Pagination,
   Space,
   Spin,
   Typography,
@@ -14,12 +14,12 @@ import {
 } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import TimelineForm from '../components/TimelineForm'
 import TimelineItem from '../components/TimelineItem'
 import type { LoveRecord, TimelineListRange } from '../services/timeline'
-import { listTimelineRecords } from '../services/timeline'
+import { deleteTimelineRecord, listTimelineRecords } from '../services/timeline'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
 
@@ -52,6 +52,7 @@ function groupRecordsByMonth(records: LoveRecord[]): { month: string; items: Lov
 
 export default function Timeline() {
   const isAuthed = useAuthStore((s) => s.isAuthed)
+  const me = useAuthStore((s) => s.user)
   const fetchCoupleInfo = useCoupleStore((s) => s.fetchCoupleInfo)
   const coupleLoading = useCoupleStore((s) => s.loading)
   const coupleInfo = useCoupleStore((s) => s.info)
@@ -60,15 +61,11 @@ export default function Timeline() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
-  const [pullPx, setPullPx] = useState(0)
+  const [editingRecord, setEditingRecord] = useState<LoveRecord | null>(null)
+
   /** 记录日期区间；两端都选中方才筛选，清空为查看全部 */
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null)
-
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const pullStartY = useRef(0)
-  const pullActive = useRef(false)
 
   const coupleId = coupleInfo?.bindingId ?? null
 
@@ -86,10 +83,9 @@ export default function Timeline() {
   }, [isAuthed, fetchCoupleInfo])
 
   const loadPage = useCallback(
-    async (nextPage: number, append: boolean) => {
+    async (nextPage: number) => {
       if (!coupleId) return
-      const setBusy = append ? setLoadingMore : setLoading
-      setBusy(true)
+      setLoading(true)
       try {
         const resp = await listTimelineRecords(coupleId, nextPage, PAGE_SIZE, listRange)
         if (resp.code !== 0 || !resp.data) {
@@ -98,19 +94,19 @@ export default function Timeline() {
         const { records: list, total: t, page: p } = resp.data
         setTotal(t)
         setPage(Number(p))
-        setRecords((prev) => (append ? [...prev, ...list] : list))
+        setRecords(list)
       } catch (e) {
         message.error(e instanceof Error ? e.message : '加载失败')
       } finally {
-        setBusy(false)
+        setLoading(false)
       }
     },
     [coupleId, listRange],
   )
 
   const refresh = useCallback(async () => {
-    await loadPage(1, false)
-  }, [loadPage])
+    await loadPage(page)
+  }, [loadPage, page])
 
   useEffect(() => {
     if (!coupleId) {
@@ -119,14 +115,56 @@ export default function Timeline() {
       setPage(1)
       return
     }
-    loadPage(1, false).catch(() => undefined)
+    loadPage(1).catch(() => undefined)
   }, [coupleId, listRange?.startDate, listRange?.endDate, loadPage])
 
-  const hasMore = records.length < total
+  const handlePageChange = (p: number) => {
+    loadPage(p).catch(() => undefined)
+  }
 
-  const loadMore = () => {
-    if (!hasMore || loadingMore || loading) return
-    loadPage(page + 1, true).catch(() => undefined)
+  const handleDelete = async (r: LoveRecord) => {
+    if (!coupleId) return
+    try {
+      const resp = await deleteTimelineRecord(r.id)
+      if (resp.code !== 0) {
+        throw new Error(resp.message || '删除失败')
+      }
+      message.success('已删除')
+      let targetPage = page
+      let data = await listTimelineRecords(coupleId, targetPage, PAGE_SIZE, listRange)
+      if (data.code !== 0 || !data.data) {
+        throw new Error(data.message || '刷新失败')
+      }
+      let { records: list, total: t } = data.data
+      if (list.length === 0 && targetPage > 1) {
+        targetPage -= 1
+        data = await listTimelineRecords(coupleId, targetPage, PAGE_SIZE, listRange)
+        if (data.code === 0 && data.data) {
+          list = data.data.records
+          t = data.data.total
+        }
+      }
+      setPage(targetPage)
+      setTotal(t)
+      setRecords(list)
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '删除失败')
+    }
+  }
+
+  const openCreate = () => {
+    setEditingRecord(null)
+    setFormOpen(true)
+  }
+
+  const openEdit = (r: LoveRecord) => {
+    setEditingRecord(r)
+    setFormOpen(true)
+  }
+
+  const closeForm = () => {
+    setFormOpen(false)
+    setEditingRecord(null)
   }
 
   if (!isAuthed) {
@@ -136,151 +174,104 @@ export default function Timeline() {
   const grouped = groupRecordsByMonth(records)
 
   return (
-    <div className="relative pb-20">
-      <Card className="ls-surface !shadow-sm" loading={coupleLoading && !coupleInfo}>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <Typography.Title level={3} className="!mt-0 !font-semibold !tracking-tight !text-orange-950">
-            恋爱时间轴
-          </Typography.Title>
-          {coupleId ? (
-            <Button icon={<ReloadOutlined />} onClick={() => refresh().catch(() => undefined)} loading={loading}>
-              刷新
-            </Button>
-          ) : null}
+    <div className="relative pb-24">
+      {coupleLoading && !coupleInfo ? (
+        <div className="flex justify-center py-16">
+          <Spin />
         </div>
-        <Typography.Paragraph className="ls-page-intro !mb-3 !mt-2">
-          按月份浏览记录；可选记录日期区间筛选；移动端在列表顶部下拉可刷新；底部加载更多。
-        </Typography.Paragraph>
-        {coupleId ? (
-          <Space wrap className="w-full items-center" size="middle">
-            <Typography.Text className="shrink-0 text-rose-900/75">
-              记录日期
-            </Typography.Text>
-            <DatePicker.RangePicker
-              value={dateRange}
-              onChange={(v) => setDateRange(v)}
-              allowEmpty={[true, true]}
-              allowClear
-              presets={[
-                { label: '最近7天', value: [dayjs().subtract(6, 'day'), dayjs()] },
-                { label: '最近30天', value: [dayjs().subtract(29, 'day'), dayjs()] },
-                { label: '本月', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
-              ]}
-              className="min-w-[240px] flex-1 sm:max-w-md"
-            />
-            <Button
-              type="link"
-              className="!px-0"
-              onClick={() => {
-                setDateRange(null)
-                message.info('已切换为全部时间')
-              }}
-            >
-              全部时间
-            </Button>
-          </Space>
-        ) : null}
-      </Card>
+      ) : null}
+
+      {coupleId ? (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <Typography.Text className="shrink-0 text-sm font-medium text-rose-900/85">记录日期</Typography.Text>
+          <DatePicker.RangePicker
+            value={dateRange}
+            onChange={(v) => setDateRange(v)}
+            allowEmpty={[true, true]}
+            allowClear
+            presets={[
+              { label: '最近7天', value: [dayjs().subtract(6, 'day'), dayjs()] },
+              { label: '最近30天', value: [dayjs().subtract(29, 'day'), dayjs()] },
+              { label: '本月', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
+            ]}
+            className="min-w-[240px] flex-1 sm:max-w-md"
+          />
+          <Button
+            type="link"
+            className="!px-0"
+            onClick={() => {
+              setDateRange(null)
+              message.info('已切换为全部时间')
+            }}
+          >
+            全部时间
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={() => refresh().catch(() => undefined)} loading={loading}>
+            刷新
+          </Button>
+        </div>
+      ) : null}
 
       {!coupleId && !coupleLoading ? (
-        <Card className="ls-surface mt-4 !shadow-sm">
+        <div className="ls-surface py-12">
           <Empty description="请先完成情侣绑定">
             <Link to="/couple">
               <Button type="primary">去情侣首页绑定</Button>
             </Link>
           </Empty>
-        </Card>
+        </div>
       ) : null}
 
       {coupleId ? (
         <>
-          <div className="relative mt-4">
-            {pullPx > 8 ? (
-              <div
-                className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center text-sm text-rose-800/65"
-                style={{ top: -28 }}
-              >
-                {pullPx > 52 ? '松开刷新' : '下拉刷新'}
-              </div>
-            ) : null}
-            <div
-              ref={scrollRef}
-              className="max-h-[calc(100vh-220px)] overflow-y-auto rounded-xl border border-rose-200/90 bg-rose-50/60 p-3"
-              style={{ touchAction: 'pan-y' }}
-              onTouchStart={(e) => {
-                const el = scrollRef.current
-                if (!el || el.scrollTop > 0) return
-                pullStartY.current = e.touches[0].clientY
-                pullActive.current = true
-              }}
-              onTouchMove={(e) => {
-                const el = scrollRef.current
-                if (!pullActive.current || !el || el.scrollTop > 0) {
-                  if (pullPx !== 0) setPullPx(0)
-                  return
-                }
-                const dy = e.touches[0].clientY - pullStartY.current
-                if (dy > 0) {
-                  setPullPx(Math.min(dy, 88))
-                }
-              }}
-              onTouchEnd={async () => {
-                if (pullPx > 52) {
-                  setPullPx(0)
-                  await refresh()
-                } else {
-                  setPullPx(0)
-                }
-                pullActive.current = false
-              }}
-            >
-              <div style={{ transform: `translateY(${Math.min(pullPx, 56)}px)` }}>
-                <div className="mb-2 flex justify-center">
-                  {loading && records.length === 0 ? <Spin /> : null}
-                </div>
-                {grouped.length === 0 && !loading ? (
-                  <Empty description="还没有记录，点击右下角记录今天吧" />
-                ) : (
-                  <Space direction="vertical" size={16} className="w-full">
-                    {grouped.map(({ month, items }) => (
-                      <div key={month}>
-                        <Divider orientation="left" className="!mt-0 !border-rose-200 !text-rose-800/65">
-                          {formatMonthTitle(month)}
-                        </Divider>
-                        <Space direction="vertical" size={12} className="w-full">
-                          {items.map((r) => (
-                            <TimelineItem key={r.id} record={r} />
-                          ))}
-                        </Space>
-                      </div>
-                    ))}
-                  </Space>
-                )}
-                {hasMore ? (
-                  <div className="mt-4 text-center">
-                    <Button type="link" loading={loadingMore} onClick={loadMore} disabled={loading}>
-                      {loadingMore ? '加载中…' : '加载更多'}
-                    </Button>
-                  </div>
-                ) : records.length > 0 ? (
-                  <Typography.Text className="mt-4 block text-center text-sm text-rose-800/65">
-                    已加载全部 {total} 条
-                  </Typography.Text>
-                ) : null}
-              </div>
+          <div className="min-h-[320px] rounded-xl border border-rose-200/90 bg-rose-50/50 p-3 sm:p-4">
+            <div className="mb-2 flex justify-center">
+              {loading && records.length === 0 ? <Spin /> : null}
             </div>
+            {grouped.length === 0 && !loading ? (
+              <Empty description="还没有记录，点击右下角记录今天吧" />
+            ) : (
+              <Space direction="vertical" size={16} className="w-full">
+                {grouped.map(({ month, items }) => (
+                  <div key={month}>
+                    <Divider orientation="left" className="!mt-0 !border-rose-200 !text-rose-800/65">
+                      {formatMonthTitle(month)}
+                    </Divider>
+                    <Space direction="vertical" size={12} className="w-full">
+                      {items.map((r) => (
+                        <TimelineItem
+                          key={r.id}
+                          record={r}
+                          currentUserId={me?.id}
+                          onEdit={openEdit}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </Space>
+                  </div>
+                ))}
+              </Space>
+            )}
           </div>
 
-          <FloatButton
-            icon={<PlusOutlined />}
-            type="primary"
-            tooltip="记录今天"
-            onClick={() => setFormOpen(true)}
-          />
+          {total > 0 ? (
+            <div className="mt-4 flex justify-center">
+              <Pagination
+                current={page}
+                pageSize={PAGE_SIZE}
+                total={total}
+                onChange={handlePageChange}
+                showSizeChanger={false}
+                showTotal={(t) => `共 ${t} 条`}
+              />
+            </div>
+          ) : null}
+
+          <FloatButton icon={<PlusOutlined />} type="primary" tooltip="记录今天" onClick={openCreate} />
           <Modal
-            title="记录今天"
+            title={editingRecord ? '编辑记录' : '记录今天'}
             open={formOpen}
-            onCancel={() => setFormOpen(false)}
+            onCancel={closeForm}
             footer={null}
             destroyOnClose
             width={560}
@@ -288,8 +279,9 @@ export default function Timeline() {
             <TimelineForm
               coupleId={coupleId}
               open={formOpen}
-              onClose={() => setFormOpen(false)}
-              onSuccess={() => refresh().catch(() => undefined)}
+              editingRecord={editingRecord}
+              onClose={closeForm}
+              onSuccess={() => loadPage(page).catch(() => undefined)}
             />
           </Modal>
         </>

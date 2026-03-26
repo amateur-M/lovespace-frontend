@@ -58,8 +58,32 @@ export type CreateLoveRecordBody = {
   imagesJson?: string | null
 }
 
+/** 与后端 {@code love_records.visibility} 一致：1 仅自己，2 情侣双方 */
+export const VISIBILITY_SELF = 1
+export const VISIBILITY_COUPLE = 2
+
 export async function createTimelineRecord(body: CreateLoveRecordBody) {
   const { data } = await http.post<ApiResponse<LoveRecord>>('/api/v1/timeline/records', body)
+  return data
+}
+
+export type UpdateLoveRecordBody = {
+  recordDate?: string
+  content?: string
+  mood?: string
+  locationJson?: string | null
+  visibility?: number
+  tagsJson?: string | null
+  imagesJson?: string | null
+}
+
+export async function updateTimelineRecord(id: string, body: UpdateLoveRecordBody) {
+  const { data } = await http.put<ApiResponse<LoveRecord>>(`/api/v1/timeline/records/${id}`, body)
+  return data
+}
+
+export async function deleteTimelineRecord(id: string) {
+  const { data } = await http.delete<ApiResponse<null>>(`/api/v1/timeline/records/${id}`)
   return data
 }
 

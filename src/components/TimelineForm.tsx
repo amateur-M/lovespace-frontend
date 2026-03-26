@@ -1,14 +1,22 @@
-import { Button, DatePicker, Form, Input, Select, Upload, message } from 'antd'
+import { Button, DatePicker, Form, Input, Radio, Select, Upload, message } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import { MOOD_OPTIONS } from './MoodTag'
-import { createTimelineRecord, uploadTimelineImage } from '../services/timeline'
+import {
+  VISIBILITY_COUPLE,
+  VISIBILITY_SELF,
+  createTimelineRecord,
+  updateTimelineRecord,
+  uploadTimelineImage,
+  type LoveRecord,
+} from '../services/timeline'
 
 type TimelineFormValues = {
   recordDate: dayjs.Dayjs
   content: string
   mood: string
+  visibility: number
   locationName?: string
   lat?: string | number | null
   lng?: string | number | null
@@ -21,26 +29,87 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 type TimelineFormProps = {
   coupleId: string
   open: boolean
+  /** 传入则为编辑模式 */
+  editingRecord?: LoveRecord | null
   onClose: () => void
   onSuccess: () => void
 }
 
-/** 新建时间轴记录表单（弹窗内使用）。 */
-export default function TimelineForm({ coupleId, open, onClose, onSuccess }: TimelineFormProps) {
+function parseTags(json?: string | null): string[] {
+  if (!json?.trim()) return []
+  try {
+    const arr = JSON.parse(json) as unknown
+    if (Array.isArray(arr) && arr.every((x) => typeof x === 'string')) return arr
+  } catch {
+    /* ignore */
+  }
+  return []
+}
+
+function parseImages(json?: string | null): string[] {
+  if (!json?.trim()) return []
+  try {
+    const arr = JSON.parse(json) as unknown
+    if (Array.isArray(arr) && arr.every((x) => typeof x === 'string')) return arr
+  } catch {
+    /* ignore */
+  }
+  return []
+}
+
+/** 新建 / 编辑时间轴记录表单（弹窗内使用）。默认双方可见。 */
+export default function TimelineForm({ coupleId, open, editingRecord, onClose, onSuccess }: TimelineFormProps) {
   const [form] = Form.useForm<TimelineFormValues>()
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const isEdit = Boolean(editingRecord)
 
   useEffect(() => {
-    if (open) {
+    if (!open) return
+    if (editingRecord) {
+      const tags = parseTags(editingRecord.tagsJson)
+      const urls = parseImages(editingRecord.imagesJson)
+      let locationName: string | undefined
+      let lat: string | undefined
+      let lng: string | undefined
+      if (editingRecord.locationJson?.trim()) {
+        try {
+          const o = JSON.parse(editingRecord.locationJson) as Record<string, unknown>
+          if (typeof o.name === 'string') locationName = o.name
+          if (typeof o.lat === 'number') lat = String(o.lat)
+          if (typeof o.lng === 'number') lng = String(o.lng)
+        } catch {
+          /* ignore */
+        }
+      }
+      form.setFieldsValue({
+        recordDate: dayjs(editingRecord.recordDate),
+        content: editingRecord.content,
+        mood: editingRecord.mood,
+        visibility: editingRecord.visibility ?? VISIBILITY_COUPLE,
+        tags,
+        locationName,
+        lat,
+        lng,
+      })
+      setFileList(
+        urls.map((url, i) => ({
+          uid: `existing-${i}`,
+          name: `图${i + 1}`,
+          status: 'done' as const,
+          url,
+        })),
+      )
+    } else {
       form.setFieldsValue({
         recordDate: dayjs(),
         mood: 'happy',
+        visibility: VISIBILITY_COUPLE,
         tags: [],
       })
       setFileList([])
     }
-  }, [open, form])
+  }, [open, editingRecord, form])
 
   const toNum = (x: string | number | null | undefined) => {
     if (x === null || x === undefined || x === '') return NaN
@@ -70,21 +139,42 @@ export default function TimelineForm({ coupleId, open, onClose, onSuccess }: Tim
     try {
       const urls = collectImageUrls()
       const tags = values.tags?.filter(Boolean) ?? []
-      const body = {
-        coupleId,
-        recordDate: values.recordDate.format('YYYY-MM-DD'),
-        content: values.content.trim(),
-        mood: values.mood,
-        locationJson: buildLocationJson(values),
-        visibility: 2,
-        tagsJson: tags.length ? JSON.stringify(tags) : null,
-        imagesJson: urls.length ? JSON.stringify(urls) : null,
+      const locationJson = buildLocationJson(values)
+      const tagsJson = tags.length ? JSON.stringify(tags) : null
+      const imagesJson = urls.length ? JSON.stringify(urls) : null
+
+      if (isEdit && editingRecord) {
+        const body = {
+          recordDate: values.recordDate.format('YYYY-MM-DD'),
+          content: values.content.trim(),
+          mood: values.mood,
+          locationJson,
+          visibility: values.visibility,
+          tagsJson,
+          imagesJson,
+        }
+        const resp = await updateTimelineRecord(editingRecord.id, body)
+        if (resp.code !== 0) {
+          throw new Error(resp.message || '更新失败')
+        }
+        message.success('记录已更新')
+      } else {
+        const body = {
+          coupleId,
+          recordDate: values.recordDate.format('YYYY-MM-DD'),
+          content: values.content.trim(),
+          mood: values.mood,
+          locationJson,
+          visibility: values.visibility,
+          tagsJson,
+          imagesJson,
+        }
+        const resp = await createTimelineRecord(body)
+        if (resp.code !== 0) {
+          throw new Error(resp.message || '创建失败')
+        }
+        message.success('记录已保存')
       }
-      const resp = await createTimelineRecord(body)
-      if (resp.code !== 0) {
-        throw new Error(resp.message || '创建失败')
-      }
-      message.success('记录已保存')
       onSuccess()
       onClose()
     } catch (e) {
@@ -102,6 +192,7 @@ export default function TimelineForm({ coupleId, open, onClose, onSuccess }: Tim
       initialValues={{
         recordDate: dayjs(),
         mood: 'happy',
+        visibility: VISIBILITY_COUPLE,
         tags: [],
       }}
     >
@@ -121,6 +212,19 @@ export default function TimelineForm({ coupleId, open, onClose, onSuccess }: Tim
       </Form.Item>
       <Form.Item label="心情" name="mood" rules={[{ required: true }]}>
         <Select options={[...MOOD_OPTIONS]} />
+      </Form.Item>
+      <Form.Item
+        label="谁可见"
+        name="visibility"
+        rules={[{ required: true }]}
+        extra="默认双方可见；仅自己可见时对方在时间轴中看不到本条。"
+      >
+        <Radio.Group
+          options={[
+            { label: '双方可见', value: VISIBILITY_COUPLE },
+            { label: '仅自己可见', value: VISIBILITY_SELF },
+          ]}
+        />
       </Form.Item>
       <Form.Item label="位置名称（可选）" name="locationName">
         <Input placeholder="如：江滩公园" allowClear />
@@ -185,7 +289,7 @@ export default function TimelineForm({ coupleId, open, onClose, onSuccess }: Tim
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>取消</Button>
           <Button type="primary" htmlType="submit" loading={submitting}>
-            保存
+            {isEdit ? '保存修改' : '保存'}
           </Button>
         </div>
       </Form.Item>

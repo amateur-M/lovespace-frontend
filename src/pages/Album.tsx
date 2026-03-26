@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Empty, Input, Modal, Space, Spin, Typography, message } from 'antd'
+import { Button, Empty, Input, Modal, Pagination, Space, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import AlbumCard from '../components/AlbumCard'
@@ -17,6 +17,8 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
 
+const PHOTO_PAGE_SIZE = 12
+
 export default function AlbumPage() {
   const isAuthed = useAuthStore((s) => s.isAuthed)
   const fetchCoupleInfo = useCoupleStore((s) => s.fetchCoupleInfo)
@@ -29,6 +31,8 @@ export default function AlbumPage() {
   const [albumsLoading, setAlbumsLoading] = useState(false)
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null)
   const [photos, setPhotos] = useState<AlbumPhoto[]>([])
+  const [photoPage, setPhotoPage] = useState(1)
+  const [photoTotal, setPhotoTotal] = useState(0)
   const [photosLoading, setPhotosLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -74,14 +78,17 @@ export default function AlbumPage() {
     loadAlbums()
   }, [coupleId, loadAlbums])
 
-  const loadPhotos = useCallback(async (albumId: string) => {
+  const loadPhotos = useCallback(async (albumId: string, page: number) => {
     setPhotosLoading(true)
     try {
-      const resp = await listAlbumPhotos(albumId)
+      const resp = await listAlbumPhotos(albumId, page, PHOTO_PAGE_SIZE)
       if (resp.code !== 0 || !resp.data) {
         throw new Error(resp.message || '加载照片失败')
       }
-      setPhotos(resp.data)
+      const { photos: list, total, page: p } = resp.data
+      setPhotos(list)
+      setPhotoTotal(total)
+      setPhotoPage(Number(p))
     } catch (e) {
       message.error(e instanceof Error ? e.message : '加载照片失败')
     } finally {
@@ -92,9 +99,11 @@ export default function AlbumPage() {
   useEffect(() => {
     if (!selectedAlbumId) {
       setPhotos([])
+      setPhotoTotal(0)
+      setPhotoPage(1)
       return
     }
-    loadPhotos(selectedAlbumId)
+    loadPhotos(selectedAlbumId, 1)
   }, [selectedAlbumId, loadPhotos])
 
   const openViewer = (index: number) => {
@@ -135,10 +144,12 @@ export default function AlbumPage() {
         if (resp.code !== 0 || !resp.data) {
           throw new Error(resp.message || '上传失败')
         }
-        setPhotos((p) => [resp.data!, ...p])
       }
       message.success(`已上传 ${files.length} 张`)
       await loadAlbums()
+      if (selectedAlbumId) {
+        await loadPhotos(selectedAlbumId, 1)
+      }
     } catch (e) {
       message.error(e instanceof Error ? e.message : '上传失败')
     } finally {
@@ -219,6 +230,22 @@ export default function AlbumPage() {
         ) : (
           <PhotoGrid photos={photos} onPhotoClick={openViewer} onToggleFavorite={handleToggleFavorite} />
         )}
+
+        {photoTotal > 0 ? (
+          <div className="flex justify-center pt-2">
+            <Pagination
+              current={photoPage}
+              pageSize={PHOTO_PAGE_SIZE}
+              total={photoTotal}
+              onChange={(p) => {
+                if (!selectedAlbumId) return
+                loadPhotos(selectedAlbumId, p).catch(() => undefined)
+              }}
+              showSizeChanger={false}
+              showTotal={(t) => `共 ${t} 张`}
+            />
+          </div>
+        ) : null}
 
         <PhotoViewer
           open={viewerOpen}
