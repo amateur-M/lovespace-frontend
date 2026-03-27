@@ -3,6 +3,7 @@ import { Button, Empty, Form, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import PlanCard from '../components/PlanCard'
+import PlanExpensePanel from '../components/PlanExpensePanel'
 import PlanForm, { type PlanFormValues } from '../components/PlanForm'
 import TaskFormModal, { applyTaskToForm, type TaskFormValues } from '../components/TaskFormModal'
 import TaskItem from '../components/TaskItem'
@@ -370,6 +371,13 @@ export default function PlanPage() {
                   compact={false}
                   onEdit={() => openEditPlanModal(selectedPlan)}
                   onDelete={() => void handleDeletePlan(selectedPlan)}
+                />
+
+                <PlanExpensePanel
+                  planId={selectedPlan.id}
+                  onExpensesChanged={() => {
+                    void refreshPlans()
+                  }}
                 />
 
                 <div className="ls-surface p-5">

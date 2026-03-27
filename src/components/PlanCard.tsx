@@ -83,7 +83,11 @@ export default function PlanCard({ plan, selected, onClick, compact, onEdit, onD
         </div>
       ) : null}
 
-      <BudgetTracker total={plan.budgetTotal} spent={plan.budgetSpent} />
+      <BudgetTracker
+        total={plan.budgetTotal}
+        spent={plan.budgetSpent}
+        breakdown={plan.expenseSummary ?? null}
+      />
     </>
   )
 
@@ -107,7 +111,7 @@ export default function PlanCard({ plan, selected, onClick, compact, onEdit, onD
               onClick: () => {
                 Modal.confirm({
                   title: '删除该计划？',
-                  content: '其下全部任务将一并删除，且无法恢复。',
+                  content: '其下任务与消费记录将一并删除，且无法恢复。',
                   okText: '删除',
                   okType: 'danger',
                   cancelText: '取消',

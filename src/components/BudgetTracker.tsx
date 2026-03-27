@@ -4,16 +4,29 @@ function toNumber(v: number | string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+export type BudgetBreakdown = {
+  lodging: number
+  transport: number
+  dining: number
+  other: number
+}
+
 type BudgetTrackerProps = {
   total?: number | string | null
   spent?: number | string | null
+  /** 有数据时展示四类简要占比（来自 expenseSummary） */
+  breakdown?: BudgetBreakdown | null
   className?: string
 }
 
 /**
  * 预算已用 / 总额与简易比例条。
  */
-export default function BudgetTracker({ total, spent, className = '' }: BudgetTrackerProps) {
+function fmtMoney(n: number) {
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+}
+
+export default function BudgetTracker({ total, spent, breakdown, className = '' }: BudgetTrackerProps) {
   const t = toNumber(total)
   const s = toNumber(spent)
   if (t === null && s === null) {
@@ -51,6 +64,18 @@ export default function BudgetTracker({ total, spent, className = '' }: BudgetTr
             }`}
             style={{ width: `${Math.min(100, ratio)}%` }}
           />
+        </div>
+      ) : null}
+      {breakdown &&
+      (breakdown.lodging > 0 ||
+        breakdown.transport > 0 ||
+        breakdown.dining > 0 ||
+        breakdown.other > 0) ? (
+        <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] leading-snug text-rose-800/70">
+          {breakdown.lodging > 0 ? <span>住宿 ¥{fmtMoney(breakdown.lodging)}</span> : null}
+          {breakdown.transport > 0 ? <span>交通 ¥{fmtMoney(breakdown.transport)}</span> : null}
+          {breakdown.dining > 0 ? <span>用餐 ¥{fmtMoney(breakdown.dining)}</span> : null}
+          {breakdown.other > 0 ? <span>其他 ¥{fmtMoney(breakdown.other)}</span> : null}
         </div>
       ) : null}
     </div>

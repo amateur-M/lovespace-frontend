@@ -27,7 +27,6 @@ export type PlanFormValues = {
   status?: string
   progress?: number | null
   budgetTotal?: number | null
-  budgetSpent?: number | null
 }
 
 type PlanFormProps = {
@@ -57,7 +56,6 @@ function buildCreateBody(coupleId: string, values: PlanFormValues): CreatePlanBo
     status: values.status ?? 'draft',
     progress: values.progress ?? 0,
     budgetTotal: values.budgetTotal ?? null,
-    budgetSpent: values.budgetSpent ?? null,
   }
 }
 
@@ -73,7 +71,6 @@ function buildUpdateBody(values: PlanFormValues): UpdatePlanBody {
     status: values.status ?? 'draft',
     progress: values.progress ?? 0,
     budgetTotal: values.budgetTotal ?? null,
-    budgetSpent: values.budgetSpent ?? null,
   }
 }
 
@@ -86,7 +83,6 @@ const DEFAULT_CREATE_VALUES: PlanFormValues = {
   status: 'draft',
   progress: 0,
   budgetTotal: null,
-  budgetSpent: null,
 }
 
 /**
@@ -131,12 +127,6 @@ export default function PlanForm({
             ? typeof p.budgetTotal === 'number'
               ? p.budgetTotal
               : Number(p.budgetTotal)
-            : null,
-        budgetSpent:
-          p.budgetSpent != null && p.budgetSpent !== ''
-            ? typeof p.budgetSpent === 'number'
-              ? p.budgetSpent
-              : Number(p.budgetSpent)
             : null,
       })
     } else if (mode === 'create') {
@@ -209,14 +199,10 @@ export default function PlanForm({
             <InputNumber min={0} max={100} className="w-full" placeholder="0" />
           </Form.Item>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Form.Item name="budgetTotal" label="预算总额">
-            <InputNumber min={0} className="w-full" placeholder="可选" addonBefore="¥" />
-          </Form.Item>
-          <Form.Item name="budgetSpent" label="已花费">
-            <InputNumber min={0} className="w-full" placeholder="可选" addonBefore="¥" />
-          </Form.Item>
-        </div>
+        <Form.Item name="budgetTotal" label="预算总额">
+          <InputNumber min={0} className="w-full max-w-xs" placeholder="可选" addonBefore="¥" />
+        </Form.Item>
+        <p className="!mb-0 text-xs text-rose-800/60">已花费由「消费记录」自动汇总，无需在此填写。</p>
       </Form>
     </Modal>
   )
