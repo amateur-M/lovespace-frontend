@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 禁用 Preflight 时的必要重置 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: #e5e7eb;
+}
+
+/* 移除按钮默认样式 */
+button {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  background-color: transparent;
+  border: none;
+  outline: none;
+}
+
 :root {
   --ls-font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --ls-page-bg: #fff1f2;

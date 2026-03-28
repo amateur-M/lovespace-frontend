@@ -18,6 +18,8 @@ type PlanExpensePanelProps = {
   planId: string
   /** 消费变更后回调（用于刷新计划列表以更新预算汇总） */
   onExpensesChanged?: () => void | Promise<void>
+  /** 根节点样式，默认 `ls-surface p-5` */
+  className?: string
 }
 
 type ExpenseFormValues = {
@@ -46,7 +48,11 @@ function toCreateBody(v: ExpenseFormValues): PlanExpenseCreateBody {
 /**
  * 计划消费记录：列表、记一笔、编辑、删除。
  */
-export default function PlanExpensePanel({ planId, onExpensesChanged }: PlanExpensePanelProps) {
+export default function PlanExpensePanel({
+  planId,
+  onExpensesChanged,
+  className = 'ls-surface p-5',
+}: PlanExpensePanelProps) {
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<PlanExpense[]>([])
   const [modalOpen, setModalOpen] = useState(false)
@@ -206,11 +212,14 @@ export default function PlanExpensePanel({ planId, onExpensesChanged }: PlanExpe
   ]
 
   return (
-    <div className="ls-surface p-5">
+    <div className={className}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Typography.Title level={5} className="!mb-0 !text-rose-950">
-          消费记录
-        </Typography.Title>
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-800/45">流水</div>
+          <Typography.Title level={5} className="!mb-0 !mt-0.5 !text-rose-950">
+            消费明细
+          </Typography.Title>
+        </div>
         <Button type="primary" icon={<PlusOutlined />} className="cursor-pointer" onClick={openCreate}>
           记一笔
         </Button>

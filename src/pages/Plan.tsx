@@ -1,9 +1,10 @@
-import { PlusOutlined, UnorderedListOutlined } from '@ant-design/icons'
+import { PlusOutlined } from '@ant-design/icons'
 import { Button, Empty, Form, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
-import PlanCard from '../components/PlanCard'
+import PlanDetailHero from '../components/PlanDetailHero'
 import PlanExpensePanel from '../components/PlanExpensePanel'
+import PlanListItem from '../components/PlanListItem'
 import PlanForm, { type PlanFormValues } from '../components/PlanForm'
 import TaskFormModal, { applyTaskToForm, type TaskFormValues } from '../components/TaskFormModal'
 import TaskItem from '../components/TaskItem'
@@ -292,13 +293,13 @@ export default function PlanPage() {
 
   return (
     <div className="ls-page-intro min-h-[60vh] space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-xl">
           <Typography.Title level={2} className="!mb-2 !text-rose-950">
             共同计划
           </Typography.Title>
-          <p className="text-sm text-rose-900/75">
-            与 Ta 一起列目标、旅行与日程；进度由任务完成情况自动汇总，也可在创建时填写初始进度。
+          <p className="text-sm leading-relaxed text-rose-900/75">
+            与 Ta 一起规划目标、旅行与日程；左侧切换计划，右侧查看详情、记账与任务。
           </p>
         </div>
         <Button
@@ -306,7 +307,7 @@ export default function PlanPage() {
           icon={<PlusOutlined />}
           size="large"
           disabled={!coupleId}
-          className="cursor-pointer self-start shadow-sm"
+          className="h-11 cursor-pointer self-start rounded-full px-6 shadow-md shadow-rose-300/25"
           onClick={openCreatePlanModal}
         >
           新建计划
@@ -327,48 +328,51 @@ export default function PlanPage() {
           </Link>
         </Empty>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <section className="lg:col-span-5">
-            <div className="mb-3 flex items-center gap-2 text-rose-900/85">
-              <UnorderedListOutlined className="text-rose-500" aria-hidden />
-              <span className="text-sm font-semibold">计划列表</span>
-            </div>
-            {plansLoading && !plans.length ? (
-              <div className="flex justify-center py-12">
-                <Spin />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:gap-10">
+          <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1">
+            <div className="rounded-2xl border border-rose-200/60 bg-white/70 p-3 shadow-[0_8px_30px_-12px_rgba(190,24,93,0.12)] backdrop-blur-md">
+              <div className="px-2 pb-2 pt-1">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-800/50">计划</div>
+                <span className="text-sm font-semibold text-rose-950">快速切换</span>
               </div>
-            ) : !plans.length ? (
-              <Empty
-                description="还没有计划，点击「新建计划」开始"
-                className="rounded-xl border border-rose-200/80 bg-white/90 py-12"
-              />
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {plans.map((p) => (
-                  <li key={p.id}>
-                    <PlanCard
-                      plan={p}
-                      compact
-                      selected={p.id === selectedId}
-                      onClick={() => setSelectedId(p.id)}
-                      onEdit={() => openEditPlanModal(p)}
-                      onDelete={() => void handleDeletePlan(p)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+              {plansLoading && !plans.length ? (
+                <div className="flex justify-center py-12">
+                  <Spin />
+                </div>
+              ) : !plans.length ? (
+                <Empty
+                  description="暂无计划"
+                  className="py-8"
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                />
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {plans.map((p) => (
+                    <li key={p.id}>
+                      <PlanListItem
+                        plan={p}
+                        selected={p.id === selectedId}
+                        onSelect={() => setSelectedId(p.id)}
+                        onEdit={() => openEditPlanModal(p)}
+                        onDelete={() => void handleDeletePlan(p)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </aside>
 
-          <section className="lg:col-span-7">
-            <div className="mb-3 text-sm font-semibold text-rose-900/85">详情与任务</div>
+          <section className="min-w-0">
             {!selectedPlan ? (
-              <div className="ls-surface p-10 text-center text-sm text-rose-800/70">请选择左侧计划</div>
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-rose-200/80 bg-gradient-to-b from-white/90 to-rose-50/40 px-6 py-16 text-center">
+                <p className="text-base font-medium text-rose-900/80">在左侧选择一个计划</p>
+                <p className="mt-2 max-w-sm text-sm text-rose-800/55">列表仅展示摘要；详情、预算与任务将在此区域展开。</p>
+              </div>
             ) : (
-              <div className="space-y-5">
-                <PlanCard
+              <div className="space-y-6">
+                <PlanDetailHero
                   plan={selectedPlan}
-                  compact={false}
                   onEdit={() => openEditPlanModal(selectedPlan)}
                   onDelete={() => void handleDeletePlan(selectedPlan)}
                 />
@@ -378,14 +382,23 @@ export default function PlanPage() {
                   onExpensesChanged={() => {
                     void refreshPlans()
                   }}
+                  className="rounded-2xl border border-rose-200/50 bg-white/85 p-5 shadow-sm backdrop-blur-sm"
                 />
 
-                <div className="ls-surface p-5">
+                <div className="rounded-2xl border border-rose-200/50 bg-white/85 p-5 shadow-sm backdrop-blur-sm">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                    <Typography.Title level={5} className="!mb-0 !text-rose-950">
-                      任务清单
-                    </Typography.Title>
-                    <Button type="primary" icon={<PlusOutlined />} className="cursor-pointer" onClick={openAddTaskModal}>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-800/45">执行</div>
+                      <Typography.Title level={5} className="!mb-0 !mt-0.5 !text-rose-950">
+                        任务清单
+                      </Typography.Title>
+                    </div>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      className="h-9 cursor-pointer rounded-full px-4"
+                      onClick={openAddTaskModal}
+                    >
                       添加任务
                     </Button>
                   </div>
