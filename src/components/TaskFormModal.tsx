@@ -84,6 +84,7 @@ export default function TaskFormModal({
 }
 
 /** 打开编辑弹窗时填充表单。 */
+// eslint-disable-next-line react-refresh/only-export-components
 export function applyTaskToForm(form: FormInstance<TaskFormValues>, task: PlanTask) {
   form.setFieldsValue({
     title: task.title ?? '',
