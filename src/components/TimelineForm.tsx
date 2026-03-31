@@ -1,4 +1,4 @@
-import { Button, DatePicker, Form, Input, Radio, Select, Upload, message } from 'antd'
+import { Button, DatePicker, Form, Input, Modal, Radio, Select, Upload, message } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
@@ -8,9 +8,15 @@ import {
   VISIBILITY_SELF,
   createTimelineRecord,
   updateTimelineRecord,
-  uploadTimelineImage,
+  uploadTimelineMediaAuto,
   type LoveRecord,
 } from '../services/timeline'
+import { resolveMediaUrl } from '../utils/mediaUrl'
+import {
+  isTimelineVideoUrl,
+  TIMELINE_CHUNK_UPLOAD_THRESHOLD_BYTES,
+  validateTimelineUploadFile,
+} from '../utils/timelineMedia'
 
 type TimelineFormValues = {
   recordDate: dayjs.Dayjs
@@ -22,9 +28,6 @@ type TimelineFormValues = {
   lng?: string | number | null
   tags?: string[]
 }
-
-const MAX_IMAGE_MB = 2
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 type TimelineFormProps = {
   coupleId: string
@@ -62,6 +65,7 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
   const [form] = Form.useForm<TimelineFormValues>()
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [preview, setPreview] = useState<{ video: boolean; url: string } | null>(null)
   const isEdit = Boolean(editingRecord)
 
   useEffect(() => {
@@ -95,7 +99,7 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
       setFileList(
         urls.map((url, i) => ({
           uid: `existing-${i}`,
-          name: `图${i + 1}`,
+          name: isTimelineVideoUrl(url) ? `视频${i + 1}` : `图${i + 1}`,
           status: 'done' as const,
           url,
         })),
@@ -240,29 +244,33 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
       <Form.Item label="标签（可选）" name="tags">
         <Select mode="tags" placeholder="输入后回车，如：约会、旅行" tokenSeparators={[',']} />
       </Form.Item>
-      <Form.Item label="图片（可选）">
+      <Form.Item
+        label="图片 / 视频（可选）"
+        extra="图片单张≤20MB；视频单个≤100MB；大于 4MB 自动分片并支持断点续传。最多 9 个文件。"
+      >
         <Upload
           listType="picture-card"
           fileList={fileList}
           multiple
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov"
           beforeUpload={(file) => {
-            if (!ALLOWED_TYPES.includes(file.type)) {
-              message.error('仅支持 jpg/png/webp')
-              return Upload.LIST_IGNORE
-            }
-            if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
-              message.error(`单张不超过 ${MAX_IMAGE_MB}MB`)
+            const err = validateTimelineUploadFile(file)
+            if (err) {
+              message.error(err)
               return Upload.LIST_IGNORE
             }
             return true
           }}
+          onPreview={(file) => {
+            const raw = typeof file.url === 'string' ? file.url : (file.response as string | undefined)
+            if (!raw) return
+            const u = resolveMediaUrl(raw)
+            setPreview({ video: isTimelineVideoUrl(u), url: u })
+          }}
           customRequest={async ({ file, onSuccess, onError }) => {
             try {
-              const resp = await uploadTimelineImage(file as File)
-              if (resp.code !== 0 || !resp.data) {
-                throw new Error(resp.message || '上传失败')
-              }
-              onSuccess?.(resp.data, new XMLHttpRequest())
+              const url = await uploadTimelineMediaAuto(file as File, TIMELINE_CHUNK_UPLOAD_THRESHOLD_BYTES)
+              onSuccess?.(url, new XMLHttpRequest())
             } catch (err) {
               onError?.(err as Error)
               message.error(err instanceof Error ? err.message : '上传失败')
@@ -285,6 +293,20 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
           {fileList.length >= 9 ? null : <div>上传</div>}
         </Upload>
       </Form.Item>
+      <Modal
+        open={preview != null}
+        footer={null}
+        onCancel={() => setPreview(null)}
+        width={720}
+        destroyOnClose
+        title={preview?.video ? '视频预览' : '图片预览'}
+      >
+        {preview?.video ? (
+          <video src={preview.url} controls className="max-h-[70vh] w-full rounded bg-black" playsInline />
+        ) : preview ? (
+          <img src={preview.url} alt="" className="max-h-[70vh] w-full object-contain" />
+        ) : null}
+      </Modal>
       <Form.Item className="!mb-0">
         <div className="flex justify-end gap-2">
           <Button onClick={onClose}>取消</Button>

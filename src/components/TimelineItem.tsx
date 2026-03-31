@@ -2,6 +2,8 @@ import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined } from 
 import { Dropdown, Image, Modal, Space, Typography } from 'antd'
 import MoodTag from './MoodTag'
 import { VISIBILITY_COUPLE, type LoveRecord } from '../services/timeline'
+import { resolveMediaUrl } from '../utils/mediaUrl'
+import { isTimelineVideoUrl } from '../utils/timelineMedia'
 
 function parseLocation(json?: string | null): { name?: string; lat?: number; lng?: number } | null {
   if (!json?.trim()) return null
@@ -46,7 +48,7 @@ type TimelineItemProps = {
   onDelete?: (record: LoveRecord) => void
 }
 
-/** 单条恋爱时间轴记录：日期、内容、心情、位置、图片；作者可编辑/删除。 */
+/** 单条恋爱时间轴记录：日期、内容、心情、位置、图片与视频；作者可编辑/删除。 */
 export default function TimelineItem({ record, currentUserId, onEdit, onDelete }: TimelineItemProps) {
   const loc = parseLocation(record.locationJson)
   const tags = parseTags(record.tagsJson)
@@ -128,13 +130,23 @@ export default function TimelineItem({ record, currentUserId, onEdit, onDelete }
         </Typography.Text>
       ) : null}
       {images.length > 0 ? (
-        <Image.PreviewGroup>
-          <Space wrap size={8} className="mt-2">
-            {images.map((src) => (
-              <Image key={src} src={src} alt="" width={96} height={96} className="rounded object-cover" />
-            ))}
-          </Space>
-        </Image.PreviewGroup>
+        <Space wrap size={8} className="mt-2">
+          {images.map((src) => {
+            const resolved = resolveMediaUrl(src)
+            return isTimelineVideoUrl(src) ? (
+              <video
+                key={src}
+                src={resolved}
+                controls
+                className="h-24 w-24 rounded bg-black object-cover"
+                preload="metadata"
+                playsInline
+              />
+            ) : (
+              <Image key={src} src={resolved} alt="" width={96} height={96} className="rounded object-cover" />
+            )
+          })}
+        </Space>
       ) : null}
     </div>
   )
