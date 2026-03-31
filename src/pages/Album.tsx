@@ -12,7 +12,7 @@ import {
   listAlbumPhotos,
   listAlbums,
   setAlbumPhotoFavorite,
-  uploadAlbumPhoto,
+  uploadAlbumPhotoAuto,
 } from '../services/album'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
@@ -140,7 +140,7 @@ export default function AlbumPage() {
     setUploading(true)
     try {
       for (const file of files) {
-        const resp = await uploadAlbumPhoto(selectedAlbumId, file)
+        const resp = await uploadAlbumPhotoAuto(selectedAlbumId, file)
         if (resp.code !== 0 || !resp.data) {
           throw new Error(resp.message || '上传失败')
         }

@@ -18,9 +18,6 @@ export function isTimelineVideoUrl(url: string): boolean {
 export const TIMELINE_IMAGE_MAX_MB = 20
 export const TIMELINE_VIDEO_MAX_MB = 100
 
-/** 超过此大小走分片上传（须小于服务端 {@code chunk-size-bytes} 策略：默认单片 5MB） */
-export const TIMELINE_CHUNK_UPLOAD_THRESHOLD_BYTES = 4 * 1024 * 1024
-
 function extOf(name: string): string {
   const i = name.lastIndexOf('.')
   return i >= 0 ? name.slice(i + 1).toLowerCase() : ''

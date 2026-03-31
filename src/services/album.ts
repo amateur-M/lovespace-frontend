@@ -1,5 +1,6 @@
 import { http } from './http'
 import type { ApiResponse } from '../types/api'
+import { MEDIA_CHUNK_THRESHOLD_BYTES, uploadMediaResumable } from './mediaChunkUpload'
 
 export type Album = {
   id: string
@@ -78,6 +79,43 @@ export async function uploadAlbumPhoto(albumId: string, file: File, extra?: Uplo
   if (extra?.tagsJson) formData.append('tagsJson', extra.tagsJson)
   const { data } = await http.post<ApiResponse<AlbumPhoto>>(`/api/v1/albums/${albumId}/photos`, formData)
   return data
+}
+
+export type RegisterAlbumPhotoFromUrlBody = UploadPhotoExtra & { imageUrl: string }
+
+/** 分片合并得到 imageUrl 后写入照片记录。 */
+export async function registerAlbumPhotoFromUrl(albumId: string, body: RegisterAlbumPhotoFromUrlBody) {
+  const { data } = await http.post<ApiResponse<AlbumPhoto>>(`/api/v1/albums/${albumId}/photos/from-url`, {
+    imageUrl: body.imageUrl,
+    thumbnailUrl: body.thumbnailUrl,
+    description: body.description,
+    locationJson: body.locationJson,
+    takenDate: body.takenDate,
+    tagsJson: body.tagsJson,
+  })
+  return data
+}
+
+/**
+ * 大图走公共分片 API + from-url 登记；小图仍 multipart。
+ *
+ * @param thresholdBytes 默认 {@link MEDIA_CHUNK_THRESHOLD_BYTES}
+ */
+export async function uploadAlbumPhotoAuto(
+  albumId: string,
+  file: File,
+  extra?: UploadPhotoExtra,
+  thresholdBytes: number = MEDIA_CHUNK_THRESHOLD_BYTES,
+) {
+  if (file.size > thresholdBytes) {
+    const imageUrl = await uploadMediaResumable({ target: 'ALBUM', albumId, file })
+    const resp = await registerAlbumPhotoFromUrl(albumId, { imageUrl, ...extra })
+    if (resp.code !== 0 || !resp.data) {
+      throw new Error(resp.message || '登记照片失败')
+    }
+    return resp
+  }
+  return uploadAlbumPhoto(albumId, file, extra)
 }
 
 export async function deleteAlbumPhoto(albumId: string, photoId: string) {

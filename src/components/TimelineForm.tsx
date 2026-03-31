@@ -8,15 +8,11 @@ import {
   VISIBILITY_SELF,
   createTimelineRecord,
   updateTimelineRecord,
-  uploadTimelineMediaAuto,
   type LoveRecord,
 } from '../services/timeline'
+import { MEDIA_CHUNK_THRESHOLD_BYTES, uploadTimelineMediaAuto } from '../services/mediaChunkUpload'
 import { resolveMediaUrl } from '../utils/mediaUrl'
-import {
-  isTimelineVideoUrl,
-  TIMELINE_CHUNK_UPLOAD_THRESHOLD_BYTES,
-  validateTimelineUploadFile,
-} from '../utils/timelineMedia'
+import { isTimelineVideoUrl, validateTimelineUploadFile } from '../utils/timelineMedia'
 
 type TimelineFormValues = {
   recordDate: dayjs.Dayjs
@@ -269,7 +265,7 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
           }}
           customRequest={async ({ file, onSuccess, onError }) => {
             try {
-              const url = await uploadTimelineMediaAuto(file as File, TIMELINE_CHUNK_UPLOAD_THRESHOLD_BYTES)
+              const url = await uploadTimelineMediaAuto(file as File, MEDIA_CHUNK_THRESHOLD_BYTES)
               onSuccess?.(url, new XMLHttpRequest())
             } catch (err) {
               onError?.(err as Error)
