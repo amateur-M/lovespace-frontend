@@ -70,11 +70,11 @@ export default function TimelineRecordSocial({ record, currentUserId, onMutated 
     [record.id],
   )
 
+  // 展开时拉取评论；列表刷新后 record.commentCount 等来自服务端更新时也要重拉，避免条数变了内容仍是旧缓存
   useEffect(() => {
-    if (panelOpen) {
-      loadComments(1, false).catch(() => undefined)
-    }
-  }, [panelOpen, loadComments])
+    if (!panelOpen) return
+    loadComments(1, false).catch(() => undefined)
+  }, [panelOpen, record.id, record.commentCount, loadComments])
 
   const handleLike = async () => {
     if (likeLoading) return
