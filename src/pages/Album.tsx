@@ -12,6 +12,7 @@ import {
   listAlbumPhotos,
   listAlbums,
   setAlbumPhotoFavorite,
+  updateAlbum,
   uploadAlbumPhotoAuto,
 } from '../services/album'
 import { useAuthStore } from '../stores/authStore'
@@ -117,6 +118,19 @@ export default function AlbumPage() {
     )
   }, [])
 
+  const patchPhotoMeta = useCallback((updated: AlbumPhoto) => {
+    setPhotos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
+  }, [])
+
+  const saveAlbumName = useCallback(async (id: string, name: string) => {
+    const resp = await updateAlbum(id, { name })
+    if (resp.code !== 0 || !resp.data) {
+      throw new Error(resp.message || '更新失败')
+    }
+    setAlbums((list) => list.map((a) => (a.id === id ? resp.data! : a)))
+    message.success('相册名称已更新')
+  }, [])
+
   const handleToggleFavorite = useCallback(
     async (photo: AlbumPhoto, next: boolean) => {
       if (!selectedAlbumId) return
@@ -212,7 +226,7 @@ export default function AlbumPage() {
     return (
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Space>
+          <Space wrap>
             <Button icon={<ArrowLeftOutlined />} onClick={() => setSelectedAlbumId(null)}>
               返回相册
             </Button>
@@ -249,11 +263,13 @@ export default function AlbumPage() {
 
         <PhotoViewer
           open={viewerOpen}
+          albumId={selectedAlbumId}
           photos={photos}
           index={viewerIndex}
           onClose={() => setViewerOpen(false)}
           onIndexChange={setViewerIndex}
           onToggleFavorite={handleToggleFavorite}
+          onPhotoMetaSaved={patchPhotoMeta}
         />
       </div>
     )
@@ -291,7 +307,12 @@ export default function AlbumPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {albums.map((album) => (
-            <AlbumCard key={album.id} album={album} onClick={() => setSelectedAlbumId(album.id)} />
+            <AlbumCard
+              key={album.id}
+              album={album}
+              onOpen={() => setSelectedAlbumId(album.id)}
+              onSaveName={saveAlbumName}
+            />
           ))}
         </div>
       )}

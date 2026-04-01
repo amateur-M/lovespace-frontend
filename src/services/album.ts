@@ -49,6 +49,30 @@ export async function createAlbum(body: CreateAlbumBody) {
   return data
 }
 
+export type UpdateAlbumBody = {
+  name: string
+}
+
+export async function updateAlbum(albumId: string, body: UpdateAlbumBody) {
+  const { data } = await http.put<ApiResponse<Album>>(`/api/v1/albums/${albumId}`, body)
+  return data
+}
+
+export type UpdateAlbumPhotoBody = {
+  description?: string | null
+  locationJson?: string | null
+  takenDate?: string | null
+  tagsJson?: string | null
+}
+
+export async function updateAlbumPhoto(albumId: string, photoId: string, body: UpdateAlbumPhotoBody) {
+  const { data } = await http.put<ApiResponse<AlbumPhoto>>(
+    `/api/v1/albums/${albumId}/photos/${photoId}`,
+    body,
+  )
+  return data
+}
+
 export async function deleteAlbum(albumId: string) {
   const { data } = await http.delete<ApiResponse<unknown>>(`/api/v1/albums/${albumId}`)
   return data
