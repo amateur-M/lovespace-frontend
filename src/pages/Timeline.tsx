@@ -245,6 +245,7 @@ export default function Timeline() {
                           currentUserId={me?.id}
                           onEdit={openEdit}
                           onDelete={handleDelete}
+                          onSocialMutated={() => loadPage(page).catch(() => undefined)}
                         />
                       ))}
                     </Space>

@@ -13,6 +13,28 @@ export type LoveRecord = {
   imagesJson?: string | null
   createdAt?: string | null
   updatedAt?: string | null
+  /** 点赞数 */
+  likeCount?: number
+  /** 评论数 */
+  commentCount?: number
+  /** 当前用户是否已点赞 */
+  likedByMe?: boolean
+}
+
+export type LoveRecordComment = {
+  id: number
+  recordId: string
+  userId: string
+  authorUsername: string
+  content: string
+  createdAt: string
+}
+
+export type LoveRecordCommentPage = {
+  total: number
+  page: number
+  pageSize: number
+  comments: LoveRecordComment[]
 }
 
 export type LoveRecordPage = {
@@ -84,6 +106,35 @@ export async function updateTimelineRecord(id: string, body: UpdateLoveRecordBod
 
 export async function deleteTimelineRecord(id: string) {
   const { data } = await http.delete<ApiResponse<null>>(`/api/v1/timeline/records/${id}`)
+  return data
+}
+
+export type LikeState = { likeCount: number; likedByMe: boolean }
+
+export async function toggleTimelineLike(recordId: string) {
+  const { data } = await http.post<ApiResponse<LikeState>>(`/api/v1/timeline/records/${recordId}/like`)
+  return data
+}
+
+export async function listTimelineComments(recordId: string, page = 1, pageSize = 20) {
+  const { data } = await http.get<ApiResponse<LoveRecordCommentPage>>(
+    `/api/v1/timeline/records/${recordId}/comments`,
+    { params: { page, pageSize } },
+  )
+  return data
+}
+
+export async function postTimelineComment(recordId: string, content: string) {
+  const { data } = await http.post<ApiResponse<LoveRecordComment>>(`/api/v1/timeline/records/${recordId}/comments`, {
+    content,
+  })
+  return data
+}
+
+export async function deleteTimelineComment(recordId: string, commentId: number) {
+  const { data } = await http.delete<ApiResponse<null>>(
+    `/api/v1/timeline/records/${recordId}/comments/${commentId}`,
+  )
   return data
 }
 

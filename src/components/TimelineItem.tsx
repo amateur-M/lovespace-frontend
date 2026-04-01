@@ -1,6 +1,7 @@
 import { DeleteOutlined, EditOutlined, EnvironmentOutlined, MoreOutlined } from '@ant-design/icons'
 import { Dropdown, Image, Modal, Space, Typography } from 'antd'
 import MoodTag from './MoodTag'
+import TimelineRecordSocial from './TimelineRecordSocial'
 import { VISIBILITY_COUPLE, type LoveRecord } from '../services/timeline'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import { isTimelineVideoUrl } from '../utils/timelineMedia'
@@ -46,10 +47,18 @@ type TimelineItemProps = {
   currentUserId?: string
   onEdit?: (record: LoveRecord) => void
   onDelete?: (record: LoveRecord) => void
+  /** 点赞/评论变更后刷新当前页 */
+  onSocialMutated?: () => void
 }
 
 /** 单条恋爱时间轴记录：日期、内容、心情、位置、图片与视频；作者可编辑/删除。 */
-export default function TimelineItem({ record, currentUserId, onEdit, onDelete }: TimelineItemProps) {
+export default function TimelineItem({
+  record,
+  currentUserId,
+  onEdit,
+  onDelete,
+  onSocialMutated,
+}: TimelineItemProps) {
   const loc = parseLocation(record.locationJson)
   const tags = parseTags(record.tagsJson)
   const images = parseImages(record.imagesJson)
@@ -148,6 +157,7 @@ export default function TimelineItem({ record, currentUserId, onEdit, onDelete }
           })}
         </Space>
       ) : null}
+      <TimelineRecordSocial record={record} currentUserId={currentUserId} onMutated={onSocialMutated} />
     </div>
   )
 }
