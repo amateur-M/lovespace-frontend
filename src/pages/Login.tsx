@@ -16,7 +16,7 @@ export default function Login() {
     try {
       await login(values.email, values.password)
       message.success('登录成功')
-      navigate('/')
+      navigate('/couple')
     } catch (e) {
       message.error(e instanceof Error ? e.message : '登录失败')
     }

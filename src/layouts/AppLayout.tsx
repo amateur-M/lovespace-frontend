@@ -7,8 +7,8 @@ const { Header, Content, Footer } = Layout
 
 const baseMenuItems = [
   {
-    key: '/couple',
-    label: <Link to="/couple">首页</Link>,
+    key: '/',
+    label: <Link to="/">首页</Link>,
   },
 ]
 
@@ -24,8 +24,7 @@ export default function AppLayout() {
 
   const menuItems = isAuthed
     ? [
-        ...baseMenuItems,
-        // { key: '/couple', label: <Link to="/couple">情侣首页</Link> },
+        { key: '/couple', label: <Link to="/couple">情侣首页</Link> },
         { key: '/timeline', label: <Link to="/timeline">时间轴</Link> },
         { key: '/album', label: <Link to="/album">相册</Link> },
         { key: '/chat', label: <Link to="/chat">私密消息</Link> },
