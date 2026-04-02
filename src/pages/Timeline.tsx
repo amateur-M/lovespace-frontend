@@ -181,37 +181,6 @@ export default function Timeline() {
         </div>
       ) : null}
 
-      {coupleId ? (
-        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-          <Typography.Text className="shrink-0 text-sm font-medium text-rose-900/85">记录日期</Typography.Text>
-          <DatePicker.RangePicker
-            value={dateRange}
-            onChange={(v) => setDateRange(v)}
-            allowEmpty={[true, true]}
-            allowClear
-            presets={[
-              { label: '最近7天', value: [dayjs().subtract(6, 'day'), dayjs()] },
-              { label: '最近30天', value: [dayjs().subtract(29, 'day'), dayjs()] },
-              { label: '本月', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
-            ]}
-            className="min-w-[240px] flex-1 sm:max-w-md"
-          />
-          <Button
-            type="link"
-            className="!px-0"
-            onClick={() => {
-              setDateRange(null)
-              message.info('已切换为全部时间')
-            }}
-          >
-            全部时间
-          </Button>
-          <Button icon={<ReloadOutlined />} onClick={() => refresh().catch(() => undefined)} loading={loading}>
-            刷新
-          </Button>
-        </div>
-      ) : null}
-
       {!coupleId && !coupleLoading ? (
         <div className="ls-surface py-12">
           <Empty description="请先完成情侣绑定">
@@ -224,49 +193,83 @@ export default function Timeline() {
 
       {coupleId ? (
         <>
-          <div className="min-h-[320px] rounded-xl border border-rose-200/90 bg-rose-50/50 p-3 sm:p-4">
-            <div className="mb-2 flex justify-center">
-              {loading && records.length === 0 ? <Spin /> : null}
+          {/* 日期与工具栏固定在上方，仅下方记录区滚动 */}
+          <div className="mb-3 flex h-[calc(100dvh-11.5rem)] min-h-[280px] flex-col gap-3 sm:h-[calc(100dvh-12rem)]">
+            <div className="shrink-0 rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:px-4">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <Typography.Text className="shrink-0 text-sm font-medium text-rose-900/85">记录日期</Typography.Text>
+                <DatePicker.RangePicker
+                  value={dateRange}
+                  onChange={(v) => setDateRange(v)}
+                  allowEmpty={[true, true]}
+                  allowClear
+                  presets={[
+                    { label: '最近7天', value: [dayjs().subtract(6, 'day'), dayjs()] },
+                    { label: '最近30天', value: [dayjs().subtract(29, 'day'), dayjs()] },
+                    { label: '本月', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
+                  ]}
+                  className="min-w-[240px] flex-1 sm:max-w-md"
+                />
+                <Button
+                  type="link"
+                  className="!px-0"
+                  onClick={() => {
+                    setDateRange(null)
+                    message.info('已切换为全部时间')
+                  }}
+                >
+                  全部时间
+                </Button>
+                <Button icon={<ReloadOutlined />} onClick={() => refresh().catch(() => undefined)} loading={loading}>
+                  刷新
+                </Button>
+              </div>
             </div>
-            {grouped.length === 0 && !loading ? (
-              <Empty description="还没有记录，点击右下角记录今天吧" />
-            ) : (
-              <Space direction="vertical" size={16} className="w-full">
-                {grouped.map(({ month, items }) => (
-                  <div key={month}>
-                    <Divider orientation="left" className="!mt-0 !border-rose-200 !text-rose-800/65">
-                      {formatMonthTitle(month)}
-                    </Divider>
-                    <Space direction="vertical" size={12} className="w-full">
-                      {items.map((r) => (
-                        <TimelineItem
-                          key={r.id}
-                          record={r}
-                          currentUserId={me?.id}
-                          onEdit={openEdit}
-                          onDelete={handleDelete}
-                          onSocialMutated={() => loadPage(page).catch(() => undefined)}
-                        />
-                      ))}
-                    </Space>
-                  </div>
-                ))}
-              </Space>
-            )}
-          </div>
 
-          {total > 0 ? (
-            <div className="mt-4 flex justify-center">
-              <Pagination
-                current={page}
-                pageSize={PAGE_SIZE}
-                total={total}
-                onChange={handlePageChange}
-                showSizeChanger={false}
-                showTotal={(t) => `共 ${t} 条`}
-              />
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-rose-200/90 bg-rose-50/50 p-3 sm:p-4">
+              <div className="mb-2 flex justify-center">
+                {loading && records.length === 0 ? <Spin /> : null}
+              </div>
+              {grouped.length === 0 && !loading ? (
+                <Empty description="还没有记录，点击右下角记录今天吧" />
+              ) : (
+                <Space direction="vertical" size={16} className="w-full">
+                  {grouped.map(({ month, items }) => (
+                    <div key={month}>
+                      <Divider orientation="left" className="!mt-0 !border-rose-200 !text-rose-800/65">
+                        {formatMonthTitle(month)}
+                      </Divider>
+                      <Space direction="vertical" size={12} className="w-full">
+                        {items.map((r) => (
+                          <TimelineItem
+                            key={r.id}
+                            record={r}
+                            currentUserId={me?.id}
+                            onEdit={openEdit}
+                            onDelete={handleDelete}
+                            onSocialMutated={() => loadPage(page).catch(() => undefined)}
+                          />
+                        ))}
+                      </Space>
+                    </div>
+                  ))}
+                </Space>
+              )}
             </div>
-          ) : null}
+
+            {total > 0 ? (
+              <div className="shrink-0 flex justify-center border-t border-transparent pt-1">
+                <Pagination
+                  current={page}
+                  pageSize={PAGE_SIZE}
+                  total={total}
+                  onChange={handlePageChange}
+                  showSizeChanger={false}
+                  showTotal={(t) => `共 ${t} 条`}
+                />
+              </div>
+            ) : null}
+          </div>
 
           <FloatButton icon={<PlusOutlined />} type="primary" tooltip="记录今天" onClick={openCreate} />
           <Modal

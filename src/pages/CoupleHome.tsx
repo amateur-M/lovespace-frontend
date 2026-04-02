@@ -112,18 +112,9 @@ export default function CoupleHome() {
   }
 
   return (
-    <Space direction="vertical" size={20} className="w-full">
-      <Card className="ls-surface !shadow-sm" loading={loading}>
-        <Typography.Title level={3} className="!mt-0 !font-semibold !tracking-tight !text-orange-950">
-          情侣首页
-        </Typography.Title>
-        <Typography.Paragraph className="ls-page-intro !mb-0 !mt-2">
-          查看绑定状态、在一起天数，并可设置恋爱开始日。
-        </Typography.Paragraph>
-      </Card>
-
+    <div className="w-full space-y-6">
       {!isBound && (
-        <Card className="ls-surface !shadow-sm">
+        <Card className="ls-surface mx-auto max-w-lg !shadow-sm" loading={loading}>
           <Empty
             description="暂未绑定情侣"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -137,19 +128,19 @@ export default function CoupleHome() {
               </Button>
             </Space>
           </Empty>
-          <Typography.Paragraph className="!mt-4 !mb-0 text-center text-sm text-rose-800/70">
-            需要对方的用户 ID（可在个人资料或首页查看）。发送后对方调用接受邀请接口完成绑定。
+          <Typography.Paragraph className="!mb-0 !mt-4 text-center text-sm text-rose-800/70">
+            需要对方的用户 ID（可在个人资料或首页查看）。发送邀请后，请让对方在「接受邀请」中填写绑定 ID。
           </Typography.Paragraph>
         </Card>
       )}
 
       {isBound && info && (
-        <>
-          <CoupleCard me={user} partner={info.partner} status={info.status} />
-          <Card className="ls-surface !shadow-sm">
-            <Space direction="vertical" size={16} className="w-full">
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+          <CoupleCard me={user} partner={info.partner} status={info.status} className="!h-full" />
+          <Card className="ls-surface !flex !h-full !flex-col !shadow-sm">
+            <Space direction="vertical" size={16} className="w-full flex-1">
               <DaysCounter days={info.relationshipDays} />
-              <Descriptions column={1} size="small" bordered>
+              <Descriptions column={1} size="small" bordered className="flex-1">
                 <Descriptions.Item label="恋爱开始日">
                   <Space wrap>
                     <span>{info.startDate ?? '—'}</span>
@@ -168,11 +159,13 @@ export default function CoupleHome() {
                 cancelText="取消"
                 onConfirm={onSeparate}
               >
-                <Button danger>解除关系</Button>
+                <Button danger className="w-full sm:w-auto">
+                  解除关系
+                </Button>
               </Popconfirm>
             </Space>
           </Card>
-        </>
+        </div>
       )}
 
       <Modal
@@ -229,6 +222,6 @@ export default function CoupleHome() {
       >
         <DatePicker className="w-full" value={pendingDate} onChange={(d) => setPendingDate(d)} />
       </Modal>
-    </Space>
+    </div>
   )
 }

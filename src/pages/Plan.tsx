@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons'
-import { Button, Empty, Form, Spin, Typography, message } from 'antd'
+import { Button, Empty, FloatButton, Form, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import PlanDetailHero from '../components/PlanDetailHero'
@@ -292,28 +292,7 @@ export default function PlanPage() {
   }
 
   return (
-    <div className="ls-page-intro min-h-[60vh] space-y-8">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-xl">
-          <Typography.Title level={2} className="!mb-2 !text-rose-950">
-            共同计划
-          </Typography.Title>
-          <p className="text-sm leading-relaxed text-rose-900/75">
-            与 Ta 一起规划目标、旅行与日程；左侧切换计划，右侧查看详情、记账与任务。
-          </p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          disabled={!coupleId}
-          className="h-11 cursor-pointer self-start rounded-full px-6 shadow-md shadow-rose-300/25"
-          onClick={openCreatePlanModal}
-        >
-          新建计划
-        </Button>
-      </div>
-
+    <div className="relative min-h-[60vh] space-y-8 pb-24">
       {coupleLoading ? (
         <div className="flex justify-center py-20">
           <Spin size="large" />
@@ -341,7 +320,7 @@ export default function PlanPage() {
                 </div>
               ) : !plans.length ? (
                 <Empty
-                  description="暂无计划"
+                  description="暂无计划，点击右下角加号新建"
                   className="py-8"
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                 />
@@ -459,6 +438,15 @@ export default function PlanPage() {
         }}
         onSubmit={handleTaskModalSubmit}
       />
+
+      {coupleId ? (
+        <FloatButton
+          icon={<PlusOutlined />}
+          type="primary"
+          tooltip="新建计划"
+          onClick={openCreatePlanModal}
+        />
+      ) : null}
     </div>
   )
 }

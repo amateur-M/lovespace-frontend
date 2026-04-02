@@ -24,11 +24,11 @@ export const lovespaceTheme: ThemeConfig = {
   },
   components: {
     Layout: {
-      headerBg: 'rgba(255,255,255,0.94)',
+      headerBg: 'transparent',
       bodyBg: '#fff1f2',
       footerBg: '#fff7f7',
-      headerHeight: 56,
-      headerPadding: '0 20px',
+      headerHeight: 64,
+      headerPadding: '0',
     },
     Menu: {
       itemBg: 'transparent',

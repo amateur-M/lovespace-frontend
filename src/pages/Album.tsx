@@ -1,11 +1,21 @@
 import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, Empty, Input, Modal, Pagination, Space, Spin, Typography, message } from 'antd'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  Button,
+  Empty,
+  FloatButton,
+  Input,
+  Modal,
+  Pagination,
+  Spin,
+  Typography,
+  message,
+} from 'antd'
+import type { ChangeEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import AlbumCard from '../components/AlbumCard'
 import PhotoGrid from '../components/PhotoGrid'
 import PhotoViewer from '../components/PhotoViewer'
-import UploadButton from '../components/UploadButton'
 import type { Album, AlbumPhoto } from '../services/album'
 import {
   createAlbum,
@@ -43,6 +53,8 @@ export default function AlbumPage() {
 
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerIndex, setViewerIndex] = useState(0)
+
+  const uploadInputRef = useRef<HTMLInputElement>(null)
 
   const selectedAlbum = useMemo(
     () => albums.find((a) => a.id === selectedAlbumId) ?? null,
@@ -171,6 +183,14 @@ export default function AlbumPage() {
     }
   }
 
+  const onUploadInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files
+    if (list?.length) {
+      void handleUploadFiles(Array.from(list))
+    }
+    e.target.value = ''
+  }
+
   const submitCreateAlbum = async () => {
     const name = newAlbumName.trim()
     if (!coupleId) return
@@ -224,17 +244,22 @@ export default function AlbumPage() {
 
   if (selectedAlbumId && selectedAlbum) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Space wrap>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => setSelectedAlbumId(null)}>
-              返回相册
-            </Button>
-            <Typography.Title level={4} className="!mb-0 !font-semibold !text-orange-950">
-              {selectedAlbum.name}
-            </Typography.Title>
-          </Space>
-          <UploadButton onFiles={handleUploadFiles} loading={uploading} disabled={uploading} />
+      <div className="relative space-y-6 pb-24">
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="hidden"
+          onChange={onUploadInputChange}
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button icon={<ArrowLeftOutlined />} onClick={() => setSelectedAlbumId(null)}>
+            返回相册
+          </Button>
+          <Typography.Title level={4} className="!mb-0 !font-semibold !text-orange-950">
+            {selectedAlbum.name}
+          </Typography.Title>
         </div>
 
         {photosLoading ? (
@@ -271,24 +296,20 @@ export default function AlbumPage() {
           onToggleFavorite={handleToggleFavorite}
           onPhotoMetaSaved={patchPhotoMeta}
         />
+
+        <FloatButton
+          icon={<PlusOutlined />}
+          type="primary"
+          tooltip={uploading ? '上传中…' : '上传照片'}
+          disabled={uploading}
+          onClick={() => uploadInputRef.current?.click()}
+        />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Typography.Title level={4} className="!mb-1 !font-semibold !text-orange-950">
-            情侣相册
-          </Typography.Title>
-          <Typography.Text className="text-sm text-rose-800/70">按相册整理照片，支持收藏与预览</Typography.Text>
-        </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-          新建相册
-        </Button>
-      </div>
-
+    <div className="relative pb-24">
       {albumsLoading ? (
         <div className="flex justify-center py-24">
           <Spin />
@@ -296,13 +317,11 @@ export default function AlbumPage() {
       ) : albums.length === 0 ? (
         <div className="ls-surface py-16">
           <Empty
-            description={<span className="text-rose-800/70">还没有相册</span>}
+            description={
+              <span className="text-rose-800/70">还没有相册，点击右下角加号创建</span>
+            }
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-          >
-            <Button type="primary" onClick={() => setCreateOpen(true)}>
-              创建第一个相册
-            </Button>
-          </Empty>
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -316,6 +335,13 @@ export default function AlbumPage() {
           ))}
         </div>
       )}
+
+      <FloatButton
+        icon={<PlusOutlined />}
+        type="primary"
+        tooltip="新建相册"
+        onClick={() => setCreateOpen(true)}
+      />
 
       <Modal
         title="新建相册"

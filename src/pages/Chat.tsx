@@ -322,7 +322,7 @@ export default function ChatPage() {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <aside className="ls-surface p-3">
         <Typography.Title level={5} className="!mb-3 !text-rose-900">
-          会话列表
+          会话
         </Typography.Title>
         <List
           dataSource={[partner]}

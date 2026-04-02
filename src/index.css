@@ -55,6 +55,16 @@ body {
   }
 }
 
+@layer utilities {
+  .ls-nav-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .ls-nav-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer components {
   .ls-surface {
     @apply rounded-xl border border-rose-200/90 bg-white shadow-sm;
