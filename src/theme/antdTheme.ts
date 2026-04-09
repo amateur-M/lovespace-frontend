@@ -5,6 +5,7 @@ import type { ThemeConfig } from 'antd'
  */
 export const lovespaceTheme: ThemeConfig = {
   token: {
+    zIndexPopupBase: 1050,
     colorPrimary: '#e11d48',
     colorSuccess: '#059669',
     colorWarning: '#ea580c',

@@ -45,10 +45,11 @@ body {
   background-color: var(--ls-page-bg);
 }
 
+/* 仅作用于应用根内：若对全局 * 生效，会破坏 body 上 Ant Design 浮层（Select/DatePicker/Dropdown）的 rc-motion 过渡，表现为面板不弹出或不可见 */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  #root *,
+  #root *::before,
+  #root *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

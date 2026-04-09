@@ -18,7 +18,11 @@ import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
   return (
-    <ConfigProvider theme={lovespaceTheme} locale={zhCN}>
+    <ConfigProvider
+      theme={lovespaceTheme}
+      locale={zhCN}
+      getPopupContainer={() => document.body}
+    >
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
