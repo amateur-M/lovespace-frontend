@@ -12,6 +12,7 @@ import Album from './pages/Album'
 import Chat from './pages/Chat'
 import Plan from './pages/Plan'
 import EmotionAnalysis from './pages/EmotionAnalysis'
+import AILoveLetter from './pages/AILoveLetter'
 import Register from './pages/Register'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -30,6 +31,7 @@ function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/plan" element={<Plan />} />
           <Route path="/emotion" element={<EmotionAnalysis />} />
+          <Route path="/love-letter" element={<AILoveLetter />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
