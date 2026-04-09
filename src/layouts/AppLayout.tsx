@@ -3,6 +3,7 @@ import {
   CarryOutOutlined,
   HeartOutlined,
   HomeOutlined,
+  LineChartOutlined,
   MessageOutlined,
   PictureOutlined,
 } from '@ant-design/icons'
@@ -21,6 +22,7 @@ const authedNavItems: NavItem[] = [
   { to: '/album', label: '相册', icon: <PictureOutlined aria-hidden /> },
   { to: '/chat', label: '私密消息', icon: <MessageOutlined aria-hidden /> },
   { to: '/plan', label: '共同计划', icon: <CarryOutOutlined aria-hidden /> },
+  { to: '/emotion', label: '情感洞察', icon: <LineChartOutlined aria-hidden /> },
 ]
 
 const guestNavItems: NavItem[] = [{ to: '/', label: '首页', icon: <HomeOutlined aria-hidden /> }]
