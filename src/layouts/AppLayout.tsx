@@ -93,8 +93,8 @@ export default function AppLayout() {
       ]
 
   return (
-    <Layout className="min-h-screen bg-rose-50">
-      <Header className="sticky top-0 z-50 h-auto border-0 bg-transparent leading-normal shadow-none">
+    <Layout className="flex min-h-screen flex-col bg-rose-50">
+      <Header className="sticky top-0 z-50 h-auto shrink-0 border-0 bg-transparent leading-normal shadow-none">
         {/* ui-ux-pro-max：顶栏与视口边缘留白，悬浮式圆角容器 */}
         <div className="px-3 pt-3 sm:px-4 sm:pt-4">
           <div className="mx-auto flex max-w-6xl items-center gap-2 rounded-2xl border border-rose-200/90 bg-white/95 px-2 py-1.5 shadow-sm backdrop-blur-md sm:gap-3 sm:px-3 sm:py-2">
@@ -142,12 +142,12 @@ export default function AppLayout() {
           </div>
         </div>
       </Header>
-      <Content className="px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto w-full max-w-6xl">
+      <Content className="flex flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto w-full max-w-6xl flex-1">
           <Outlet />
         </div>
       </Content>
-      <Footer className="border-t border-rose-200/80 bg-white py-8 text-center text-sm text-rose-800/65">
+      <Footer className="mt-auto shrink-0 border-t border-rose-200/80 bg-white py-6 text-center text-sm text-rose-800/65 sm:py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-3">
           <img src="/lovespace-logo-four.svg" width={28} height={28} className="opacity-90" alt="" aria-hidden />
           <span>LoveSpace © {new Date().getFullYear()}</span>

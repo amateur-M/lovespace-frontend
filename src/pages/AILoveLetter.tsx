@@ -1,16 +1,5 @@
 import { CopyOutlined, EditOutlined, HeartOutlined, SendOutlined } from '@ant-design/icons'
-import {
-  Alert,
-  Button,
-  Card,
-  Empty,
-  Form,
-  Input,
-  Select,
-  Spin,
-  Typography,
-  message,
-} from 'antd'
+import { Button, Card, Empty, Form, Input, Select, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
@@ -212,13 +201,9 @@ export default function AILoveLetterPage() {
                 </Button>
               </Form.Item>
             </Form>
-            <Alert
-              type="info"
-              showIcon
-              className="mt-4 !rounded-xl !border-rose-200/80 !bg-rose-50/80"
-              message="提示"
-              description="生成可能需要数十秒；发送方、接收方姓名与恋爱天数由服务端根据当前登录用户与情侣资料自动填充。"
-            />
+            <Paragraph type="secondary" className="!mb-0 !mt-3 text-xs leading-relaxed">
+              通义生成可能需要数十秒，请耐心等待。
+            </Paragraph>
           </Card>
 
           <Card
@@ -258,7 +243,7 @@ export default function AILoveLetterPage() {
             ) : (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="填写左侧选项后点击「生成情书」"
+                description="在左侧选好风格与篇幅后，点击生成即可在下方看到正文"
                 className="py-12"
               />
             )}
