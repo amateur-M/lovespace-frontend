@@ -8,7 +8,7 @@ import {
   MessageOutlined,
   PictureOutlined,
 } from '@ant-design/icons'
-import { Avatar, Dropdown, Layout, Typography, message } from 'antd'
+import { Avatar, Dropdown, Layout, Spin, Typography, message } from 'antd'
 import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
@@ -54,6 +54,7 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const isAuthed = useAuthStore((s) => s.isAuthed)
+  const authHydrated = useAuthStore((s) => s.authHydrated)
   const hydrate = useAuthStore((s) => s.hydrate)
   const fetchProfile = useAuthStore((s) => s.fetchProfile)
   const logout = useAuthStore((s) => s.logout)
@@ -65,13 +66,13 @@ export default function AppLayout() {
   }, [hydrate])
 
   useEffect(() => {
-    if (!isAuthed) return
+    if (!authHydrated || !isAuthed) return
     fetchProfile().catch(async () => {
       await logout()
       message.warning('登录状态已失效，请重新登录')
       navigate('/login', { replace: true })
     })
-  }, [fetchProfile, logout, navigate, isAuthed])
+  }, [fetchProfile, logout, navigate, isAuthed, authHydrated])
 
   const userMenuItems = isAuthed
     ? [
@@ -143,7 +144,16 @@ export default function AppLayout() {
       </Header>
       <Content className="flex flex-1 flex-col px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto w-full max-w-6xl flex-1">
-          <Outlet />
+          {!authHydrated ? (
+            <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 py-16">
+              <Spin size="large" />
+              <Typography.Text type="secondary" className="text-sm">
+                正在恢复登录状态…
+              </Typography.Text>
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </div>
       </Content>
       <Footer className="mt-auto shrink-0 border-t border-rose-200/80 bg-white py-6 text-center text-sm text-rose-800/65 sm:py-8">
