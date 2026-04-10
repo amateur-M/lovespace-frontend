@@ -52,7 +52,6 @@ function NavPill({ item }: { item: NavItem }) {
 
 export default function AppLayout() {
   const navigate = useNavigate()
-  const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
   const isAuthed = useAuthStore((s) => s.isAuthed)
   const hydrate = useAuthStore((s) => s.hydrate)
@@ -62,17 +61,17 @@ export default function AppLayout() {
   const navItems = isAuthed ? authedNavItems : guestNavItems
 
   useEffect(() => {
-    hydrate()
+    void hydrate()
   }, [hydrate])
 
   useEffect(() => {
-    if (!token) return
+    if (!isAuthed) return
     fetchProfile().catch(async () => {
       await logout()
       message.warning('登录状态已失效，请重新登录')
       navigate('/login', { replace: true })
     })
-  }, [fetchProfile, logout, navigate, token])
+  }, [fetchProfile, logout, navigate, isAuthed])
 
   const userMenuItems = isAuthed
     ? [

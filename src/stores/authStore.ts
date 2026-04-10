@@ -8,7 +8,7 @@ type AuthState = {
   token: string | null
   user: User | null
   isAuthed: boolean
-  hydrate: () => void
+  hydrate: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
   register: (username: string, email: string, password: string) => Promise<void>
   fetchProfile: () => Promise<void>
@@ -21,10 +21,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   user: null,
   isAuthed: false,
-  hydrate: () => {
+  hydrate: async () => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (token) {
       set({ token, isAuthed: true })
+      return
+    }
+    if (import.meta.env.VITE_SESSION_DISTRIBUTED === 'true') {
+      try {
+        const resp = await authApi.getProfile()
+        if (resp.code === 0 && resp.data) {
+          set({ token: null, user: resp.data, isAuthed: true })
+        }
+      } catch {
+        set({ token: null, user: null, isAuthed: false })
+      }
     }
   },
   login: async (email, password) => {
