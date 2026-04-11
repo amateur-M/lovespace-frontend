@@ -14,6 +14,13 @@ export type CoupleInviteResponse = {
   bindingId: string
 }
 
+/** 待处理情侣邀请（被邀请方） */
+export type CouplePendingInvite = {
+  bindingId: string
+  inviter: User
+  invitedAt: string
+}
+
 type ApiResponse<T> = {
   code: number
   message: string
@@ -54,5 +61,17 @@ export async function updateCoupleStartDate(startDate: string) {
 
 export async function separateCouple() {
   const { data } = await http.post<ApiResponse<null>>('/api/v1/couple/separate')
+  return data
+}
+
+/** 待处理邀请列表 */
+export async function listPendingInvites() {
+  const { data } = await http.get<ApiResponse<CouplePendingInvite[]>>('/api/v1/couple/pending-invites')
+  return data
+}
+
+/** 待处理邀请条数（消息角标） */
+export async function getPendingInviteCount() {
+  const { data } = await http.get<ApiResponse<number>>('/api/v1/couple/pending-invites/count')
   return data
 }

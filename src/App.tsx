@@ -13,6 +13,7 @@ import Chat from './pages/Chat'
 import Plan from './pages/Plan'
 import EmotionAnalysis from './pages/EmotionAnalysis'
 import AILoveLetter from './pages/AILoveLetter'
+import Inbox from './pages/Inbox'
 import Register from './pages/Register'
 import NotFoundPage from './pages/NotFoundPage'
 
@@ -30,6 +31,7 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/couple" element={<CoupleHome />} />
+          <Route path="/inbox" element={<Inbox />} />
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/album" element={<Album />} />
           <Route path="/chat" element={<Chat />} />

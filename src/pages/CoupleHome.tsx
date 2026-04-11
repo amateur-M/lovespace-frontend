@@ -25,6 +25,7 @@ import CoupleCard from '../components/CoupleCard'
 import DaysCounter from '../components/DaysCounter'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
+import { useInboxStore } from '../stores/inboxStore'
 
 const { Paragraph, Text } = Typography
 
@@ -43,22 +44,21 @@ export default function CoupleHome() {
   const loading = useCoupleStore((s) => s.loading)
   const fetchCoupleInfo = useCoupleStore((s) => s.fetchCoupleInfo)
   const invite = useCoupleStore((s) => s.invite)
-  const accept = useCoupleStore((s) => s.accept)
   const updateStartDate = useCoupleStore((s) => s.updateStartDate)
   const separate = useCoupleStore((s) => s.separate)
+  const pendingInviteCount = useInboxStore((s) => s.pendingCount)
+  const refreshPendingCount = useInboxStore((s) => s.refreshPendingCount)
 
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [acceptOpen, setAcceptOpen] = useState(false)
   const [inviteeId, setInviteeId] = useState('')
-  const [acceptBindingId, setAcceptBindingId] = useState('')
-  const [acceptStartDate, setAcceptStartDate] = useState<dayjs.Dayjs | null>(null)
   const [dateOpen, setDateOpen] = useState(false)
   const [pendingDate, setPendingDate] = useState<dayjs.Dayjs | null>(null)
 
   useEffect(() => {
     if (!isAuthed) return
     fetchCoupleInfo().catch(() => undefined)
-  }, [isAuthed, fetchCoupleInfo])
+    void refreshPendingCount()
+  }, [isAuthed, fetchCoupleInfo, refreshPendingCount])
 
   if (!isAuthed) {
     return <Navigate to="/login" replace />
@@ -92,29 +92,12 @@ export default function CoupleHome() {
       return
     }
     try {
-      const bindingId = await invite(id)
-      message.success(`邀请已发送，绑定 ID：${bindingId}（请让对方在「接受邀请」中填写）`)
+      await invite(id)
+      message.success('邀请已发送，对方可在右上角「消息」中查看并处理')
       setInviteOpen(false)
       setInviteeId('')
     } catch (e) {
       message.error(e instanceof Error ? e.message : '邀请失败')
-    }
-  }
-
-  const submitAccept = async () => {
-    const bid = acceptBindingId.trim()
-    if (!bid) {
-      message.warning('请输入绑定 ID')
-      return
-    }
-    try {
-      await accept(bid, acceptStartDate ? acceptStartDate.format('YYYY-MM-DD') : null)
-      message.success('已绑定情侣')
-      setAcceptOpen(false)
-      setAcceptBindingId('')
-      setAcceptStartDate(null)
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : '接受失败')
     }
   }
 
@@ -143,10 +126,22 @@ export default function CoupleHome() {
                 绑定情侣，解锁时间轴与相册
               </Typography.Title>
               <Paragraph className="!mb-0 text-[15px] leading-relaxed text-rose-900/70">
-                发送邀请或输入对方给的绑定 ID，即可一起记录每一天。
+                向 TA 发出邀请后，对方在「消息」里一键接受即可绑定，无需再传绑定码。
               </Paragraph>
             </div>
           </section>
+
+          {pendingInviteCount > 0 && (
+            <div className="mx-auto max-w-lg rounded-2xl border border-rose-300/80 bg-rose-100/50 px-4 py-3 text-center shadow-sm">
+              <Text className="text-sm text-rose-950">
+                你有 <strong>{pendingInviteCount}</strong> 条待处理邀请，请前往
+              </Text>{' '}
+              <Link to="/inbox" className="ls-link text-sm font-semibold text-rose-800 underline-offset-2">
+                消息
+              </Link>
+              <Text className="text-sm text-rose-950"> 处理。</Text>
+            </div>
+          )}
 
           <Card className="ls-surface mx-auto max-w-lg !shadow-sm" loading={loading}>
             <Empty
@@ -157,13 +152,13 @@ export default function CoupleHome() {
                 <Button type="primary" size="large" onClick={() => setInviteOpen(true)}>
                   邀请 TA
                 </Button>
-                <Button size="large" onClick={() => setAcceptOpen(true)}>
-                  接受邀请
-                </Button>
+                <Link to="/inbox">
+                  <Button size="large">查看消息</Button>
+                </Link>
               </Space>
             </Empty>
             <Typography.Paragraph className="!mb-0 !mt-4 text-center text-sm text-rose-800/70">
-              需要对方的用户 ID（可在个人资料或首页查看）。发送邀请后，请让对方在「接受邀请」中填写绑定 ID。
+              需要对方的用户 ID（可在个人资料页查看）。若收到邀请，请打开右上角「消息」或上方入口处理。
             </Typography.Paragraph>
           </Card>
         </>
@@ -287,32 +282,6 @@ export default function CoupleHome() {
           value={inviteeId}
           onChange={(e) => setInviteeId(e.target.value)}
         />
-      </Modal>
-
-      <Modal
-        title="接受邀请"
-        open={acceptOpen}
-        onOk={submitAccept}
-        onCancel={() => setAcceptOpen(false)}
-        okText="确认绑定"
-        destroyOnClose
-      >
-        <Typography.Paragraph type="secondary" className="text-sm">
-          输入对方发送的绑定 ID；可选指定恋爱开始日，留空则默认今天。
-        </Typography.Paragraph>
-        <Space direction="vertical" className="w-full" size={12}>
-          <Input
-            placeholder="bindingId"
-            value={acceptBindingId}
-            onChange={(e) => setAcceptBindingId(e.target.value)}
-          />
-          <DatePicker
-            className="w-full"
-            placeholder="恋爱开始日（可选）"
-            value={acceptStartDate}
-            onChange={(d) => setAcceptStartDate(d)}
-          />
-        </Space>
       </Modal>
 
       <Modal

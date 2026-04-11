@@ -4,14 +4,16 @@ import {
   EditOutlined,
   HeartOutlined,
   HomeOutlined,
+  InboxOutlined,
   LineChartOutlined,
   MessageOutlined,
   PictureOutlined,
 } from '@ant-design/icons'
-import { Avatar, Dropdown, Layout, Spin, Typography, message } from 'antd'
+import { Avatar, Badge, Dropdown, Layout, Spin, Typography, message } from 'antd'
 import { useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useInboxStore } from '../stores/inboxStore'
 
 const { Header, Content, Footer } = Layout
 
@@ -58,6 +60,8 @@ export default function AppLayout() {
   const hydrate = useAuthStore((s) => s.hydrate)
   const fetchProfile = useAuthStore((s) => s.fetchProfile)
   const logout = useAuthStore((s) => s.logout)
+  const pendingCount = useInboxStore((s) => s.pendingCount)
+  const refreshPendingCount = useInboxStore((s) => s.refreshPendingCount)
 
   const navItems = isAuthed ? authedNavItems : guestNavItems
 
@@ -74,8 +78,40 @@ export default function AppLayout() {
     })
   }, [fetchProfile, logout, navigate, isAuthed, authHydrated])
 
+  useEffect(() => {
+    if (!authHydrated || !isAuthed) return
+    void refreshPendingCount()
+  }, [authHydrated, isAuthed, refreshPendingCount])
+
+  useEffect(() => {
+    if (!authHydrated || !isAuthed) return
+    const id = window.setInterval(() => void refreshPendingCount(), 90_000)
+    return () => window.clearInterval(id)
+  }, [authHydrated, isAuthed, refreshPendingCount])
+
+  useEffect(() => {
+    if (!authHydrated || !isAuthed) return
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void refreshPendingCount()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [authHydrated, isAuthed, refreshPendingCount])
+
   const userMenuItems = isAuthed
     ? [
+        {
+          key: 'inbox',
+          label: (
+            <Link to="/inbox" className="flex items-center justify-between gap-3 text-inherit">
+              <span className="flex items-center gap-2">
+                <InboxOutlined className="text-[15px] text-rose-600" aria-hidden />
+                消息
+              </span>
+              {pendingCount > 0 ? <Badge count={pendingCount} size="small" /> : null}
+            </Link>
+          ),
+        },
         { key: 'profile', label: <Link to="/profile">个人信息</Link> },
         {
           key: 'logout',
