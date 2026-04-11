@@ -4,7 +4,6 @@ import {
   EditOutlined,
   HeartOutlined,
   HomeOutlined,
-  InboxOutlined,
   LineChartOutlined,
   MessageOutlined,
   PictureOutlined,
@@ -104,10 +103,7 @@ export default function AppLayout() {
           key: 'inbox',
           label: (
             <Link to="/inbox" className="flex items-center justify-between gap-3 text-inherit">
-              <span className="flex items-center gap-2">
-                <InboxOutlined className="text-[15px] text-rose-600" aria-hidden />
-                消息
-              </span>
+              <span>消息列表</span>
               {pendingCount > 0 ? <Badge count={pendingCount} size="small" /> : null}
             </Link>
           ),
