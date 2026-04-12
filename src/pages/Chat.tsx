@@ -216,7 +216,7 @@ export default function ChatPage() {
     const apiBase = import.meta.env.VITE_API_BASE_URL as string | undefined
     const wsBase = apiBase?.startsWith('http')
       ? apiBase.replace(/^http/, 'ws').replace(/\/$/, '')
-      : 'ws://127.0.0.1:8081'
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
     const wsUrl = `${wsBase}/ws/chat?token=${encodeURIComponent(token)}`
 
     let alive = true
