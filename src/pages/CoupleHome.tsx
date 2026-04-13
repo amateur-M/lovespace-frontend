@@ -213,7 +213,7 @@ export default function CoupleHome() {
                       <Space wrap>
                         <span>{info.startDate ?? '—'}</span>
                         <Button type="link" className="!p-0" onClick={openEditDate}>
-                          设置 / 编辑
+                          设置
                         </Button>
                       </Space>
                     </Descriptions.Item>

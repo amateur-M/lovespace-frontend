@@ -34,7 +34,6 @@ export default function MessageBubble({ message, isMine, onRetract }: MessageBub
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[85%] rounded-2xl border px-3 py-2 shadow-sm sm:max-w-[70%] ${bubbleClass}`}>
         <div className="mb-1 flex items-center gap-2 text-xs opacity-80">
-          <span>{message.messageType}</span>
           {message.isScheduled === 1 && message.scheduledTime ? (
             <span>定时 {dayjs(message.scheduledTime).format('MM-DD HH:mm')}</span>
           ) : null}

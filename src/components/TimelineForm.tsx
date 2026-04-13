@@ -229,14 +229,6 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
       <Form.Item label="位置名称（可选）" name="locationName">
         <Input placeholder="如：江滩公园" allowClear />
       </Form.Item>
-      <div className="grid grid-cols-2 gap-2">
-        <Form.Item label="纬度（可选）" name="lat">
-          <Input type="number" step="any" placeholder="可选" />
-        </Form.Item>
-        <Form.Item label="经度（可选）" name="lng">
-          <Input type="number" step="any" placeholder="可选" />
-        </Form.Item>
-      </div>
       <Form.Item label="标签（可选）" name="tags">
         <Select mode="tags" placeholder="输入后回车，如：约会、旅行" tokenSeparators={[',']} />
       </Form.Item>

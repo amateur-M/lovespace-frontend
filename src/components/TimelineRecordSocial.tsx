@@ -1,16 +1,13 @@
 import {
   CommentOutlined,
-  DeleteOutlined,
   HeartFilled,
   HeartOutlined,
   SendOutlined,
 } from '@ant-design/icons'
-import { Avatar, Button, Empty, Input, Spin, Typography, message } from 'antd'
-import dayjs from 'dayjs'
+import { Button, Empty, Input, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import type { LoveRecord } from '../services/timeline'
 import {
-  deleteTimelineComment,
   listTimelineComments,
   postTimelineComment,
   toggleTimelineLike,
@@ -23,14 +20,8 @@ type TimelineRecordSocialProps = {
   /** 点赞/评论变更后刷新列表以同步计数 */
   onMutated?: () => void
 }
-
-function initials(name: string) {
-  const t = name.trim()
-  return t ? t[0]!.toUpperCase() : '?'
-}
-
 /** 时间轴单条记录的点赞与评论区（暖色、Ant Design 图标，无 emoji）。 */
-export default function TimelineRecordSocial({ record, currentUserId, onMutated }: TimelineRecordSocialProps) {
+export default function TimelineRecordSocial({ record, onMutated }: TimelineRecordSocialProps) {
   const [likeCount, setLikeCount] = useState(record.likeCount ?? 0)
   const [likedByMe, setLikedByMe] = useState(record.likedByMe ?? false)
   const [commentCount, setCommentCount] = useState(record.commentCount ?? 0)
@@ -119,22 +110,6 @@ export default function TimelineRecordSocial({ record, currentUserId, onMutated 
     }
   }
 
-  const handleDeleteComment = async (commentId: number) => {
-    try {
-      const resp = await deleteTimelineComment(record.id, commentId)
-      if (resp.code !== 0) {
-        throw new Error(resp.message || '删除失败')
-      }
-      setComments((prev) => prev.filter((c) => c.id !== commentId))
-      setCommentCount((c) => Math.max(0, c - 1))
-      setCommentTotal((t) => Math.max(0, t - 1))
-      onMutated?.()
-      message.success('已删除')
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : '删除失败')
-    }
-  }
-
   const hasMore = comments.length < commentTotal
   const loadMore = () => {
     if (commentsLoading || !hasMore) return
@@ -181,41 +156,14 @@ export default function TimelineRecordSocial({ record, currentUserId, onMutated 
           ) : (
             <ul className="mb-3 max-h-64 space-y-3 overflow-y-auto pr-1">
               {comments.map((c) => {
-                const mine = currentUserId && c.userId === currentUserId
                 return (
-                  <li key={c.id} className="flex gap-2">
-                    <Avatar
-                      size={36}
-                      className="shrink-0 bg-rose-400 text-white"
-                      aria-hidden
-                    >
-                      {initials(c.authorUsername || c.userId)}
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                        <Typography.Text strong className="text-rose-950">
-                          {c.authorUsername || '用户'}
-                        </Typography.Text>
-                        <Typography.Text type="secondary" className="text-xs">
-                          {c.createdAt ? dayjs(c.createdAt).format('MM-DD HH:mm') : ''}
-                        </Typography.Text>
-                        {mine ? (
-                          <Button
-                            type="link"
-                            danger
-                            size="small"
-                            className="!h-auto !p-0 !text-xs"
-                            icon={<DeleteOutlined />}
-                            onClick={() => handleDeleteComment(c.id)}
-                          >
-                            删除
-                          </Button>
-                        ) : null}
-                      </div>
-                      <Typography.Paragraph className="!mb-0 mt-0.5 whitespace-pre-wrap text-rose-900/90">
-                        {c.content}
-                      </Typography.Paragraph>
-                    </div>
+                  <li key={c.id}>
+                    <Typography.Paragraph className="!mb-0 whitespace-pre-wrap text-rose-900/90">
+                      <Typography.Text strong className="text-rose-950">
+                        {c.authorUsername || '用户'}
+                      </Typography.Text>
+                      <span>：{c.content}</span>
+                    </Typography.Paragraph>
                   </li>
                 )
               })}
