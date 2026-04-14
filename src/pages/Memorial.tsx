@@ -1,29 +1,13 @@
-import {
-  CalendarOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  LeftOutlined,
-  PlusOutlined,
-  RightOutlined,
-} from '@ant-design/icons'
-import {
-  Button,
-  Calendar,
-  Card,
-  Empty,
-  FloatButton,
-  List,
-  Modal,
-  Spin,
-  Typography,
-  message,
-} from 'antd'
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { Button, Collapse, Empty, FloatButton, List, Modal, Spin, Typography, message } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import MemorialDayFormModal from '../components/MemorialDayFormModal'
-import { deleteMemorial, monthDayKey, type MemorialDay } from '../services/memorial'
+import MemorialPhotoWall from '../components/memorial/MemorialPhotoWall'
+import MemorialRomanticDecor from '../components/memorial/MemorialRomanticDecor'
+import { deleteMemorial, type MemorialDay } from '../services/memorial'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
 import {
@@ -32,13 +16,47 @@ import {
   useMemorialStore,
 } from '../stores/memorialStore'
 
-const { Title, Text, Paragraph } = Typography
+const { Text, Paragraph } = Typography
 
 const POLL_NEXT_MS = 15_000
 const POLL_LIST_MS = 45_000
 
+const BLESSING_LINES = [
+  '把平凡的日子过成节日，把心动藏进每一次倒数。',
+  '时间会慢慢走，但与你有关的日子，永远闪闪发亮。',
+  '愿每一次纪念日，都是温柔提醒：我们仍彼此选择。',
+  '在循环的年岁里，重复同一句喜欢，也很浪漫。',
+]
+
 function sortMemorials(items: MemorialDay[]): MemorialDay[] {
   return [...items].sort((a, b) => a.memorialDate.localeCompare(b.memorialDate))
+}
+
+function blessingForCouple(coupleId: string): string {
+  let h = 0
+  for (let i = 0; i < coupleId.length; i++) h = (h * 31 + coupleId.charCodeAt(i)) >>> 0
+  return BLESSING_LINES[h % BLESSING_LINES.length]
+}
+
+function WavyTitleLine() {
+  return (
+    <svg
+      className="mx-auto mt-3 h-4 w-56 text-rose-400/85 sm:w-64"
+      viewBox="0 0 240 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M4 10c18-8 38 8 56 0s38-8 56 0 38 8 56 0 38-8 56 0"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="opacity-90"
+      />
+    </svg>
+  )
 }
 
 export default function MemorialPage() {
@@ -59,7 +77,6 @@ export default function MemorialPage() {
   const invalidate = useMemorialStore((s) => s.invalidate)
   const clearMemorial = useMemorialStore((s) => s.clear)
 
-  const [calValue, setCalValue] = useState(() => dayjs())
   const [tick, setTick] = useState(0)
 
   const [formOpen, setFormOpen] = useState(false)
@@ -105,14 +122,6 @@ export default function MemorialPage() {
     return () => window.clearInterval(id)
   }, [])
 
-  const monthDaySet = useMemo(() => {
-    const s = new Set<string>()
-    for (const m of items) {
-      s.add(monthDayKey(m.memorialDate))
-    }
-    return s
-  }, [items])
-
   const remainingMs = useMemo(
     () => remainingMsFromAnchor(countdownAnchor),
     [countdownAnchor, tick],
@@ -121,6 +130,13 @@ export default function MemorialPage() {
     remainingMs != null && nextPayload?.memorial
       ? formatCountdown(remainingMs)
       : null
+
+  const blessingText = useMemo(() => {
+    const desc = nextPayload?.memorial?.description?.trim()
+    if (desc) return desc
+    if (coupleId) return blessingForCouple(coupleId)
+    return BLESSING_LINES[0]
+  }, [nextPayload?.memorial?.description, coupleId])
 
   const openCreate = useCallback((d: Dayjs) => {
     setFormEditing(null)
@@ -154,89 +170,21 @@ export default function MemorialPage() {
     [coupleId, invalidate],
   )
 
-  /** 与默认 Calendar 头部能力对齐：年月展示 + 切月 + 回到今天（组件 headerRender API） */
-  const calendarHeaderRender = useCallback(
-    ({
-      value,
-      onChange,
-    }: {
-      value: Dayjs
-      type: 'month' | 'year'
-      onChange: (d: Dayjs) => void
-      onTypeChange: (t: 'month' | 'year') => void
-    }) => (
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-rose-100/90 px-1 pb-3">
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5 sm:justify-start">
-          <Button
-            type="text"
-            size="small"
-            className="shrink-0 cursor-pointer text-stone-600 hover:!bg-rose-50 hover:!text-rose-900"
-            icon={<LeftOutlined />}
-            aria-label="上一月"
-            onClick={() => onChange(value.subtract(1, 'month'))}
-          />
-          <Text strong className="min-w-0 px-1 text-center text-[15px] text-stone-900 sm:min-w-[9rem]">
-            {value.format('YYYY年 M月')}
-          </Text>
-          <Button
-            type="text"
-            size="small"
-            className="shrink-0 cursor-pointer text-stone-600 hover:!bg-rose-50 hover:!text-rose-900"
-            icon={<RightOutlined />}
-            aria-label="下一月"
-            onClick={() => onChange(value.add(1, 'month'))}
-          />
-        </div>
-        <Button
-          size="small"
-          type="default"
-          className="cursor-pointer shrink-0 border-rose-200/90 bg-white text-rose-900 shadow-sm transition-colors duration-200 hover:border-rose-300 hover:!bg-rose-50 hover:!text-rose-950"
-          onClick={() => onChange(dayjs())}
-        >
-          今天
-        </Button>
-      </div>
-    ),
-    [],
-  )
-
-  /** 有纪念日的日期：圆形底纹 + 小点辅助（非唯一信息载体，列表可管理） */
-  const fullCellRender = useCallback(
-    (current: Dayjs, info: { type: string; originNode: ReactElement }) => {
-      if (info.type !== 'date') {
-        return info.originNode
-      }
-      const marked = monthDaySet.has(current.format('MM-DD'))
-      return (
-        <div className="relative flex min-h-[72px] flex-col items-center">
-          {marked ? (
-            <div
-              className="pointer-events-none absolute left-1/2 top-[6px] h-8 w-8 -translate-x-1/2 rounded-full bg-gradient-to-b from-rose-200/90 to-rose-300/75 shadow-inner ring-2 ring-rose-400/35"
-              aria-hidden
-            />
-          ) : null}
-          <div className={`relative z-[1] w-full ${marked ? '[&_.ant-picker-calendar-date-value]:font-semibold [&_.ant-picker-calendar-date-value]:text-rose-950' : ''}`}>
-            {info.originNode}
-          </div>
-        </div>
-      )
-    },
-    [monthDaySet],
-  )
-
   if (!isAuthed) {
     return <Navigate to="/login" replace />
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+    <div className="relative w-full">
+      <MemorialRomanticDecor />
+
       {coupleLoading ? (
-        <div className="flex justify-center py-24">
+        <div className="relative z-10 flex justify-center py-24">
           <Spin size="large" />
         </div>
       ) : !coupleId ? (
         <Empty
-          className="ls-surface py-16"
+          className="relative z-10 ls-surface py-16"
           description="请先完成情侣绑定"
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         >
@@ -245,40 +193,53 @@ export default function MemorialPage() {
           </Link>
         </Empty>
       ) : (
-        <div className="flex flex-col gap-6">
-          <Card className="ls-surface border-rose-200/90" loading={loadingNext && !nextPayload}>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700 transition-shadow duration-200 hover:shadow-md">
-                  <CalendarOutlined className="text-xl" aria-hidden />
-                </div>
-                <div>
-                  <Text type="secondary" className="text-xs uppercase tracking-wide">
-                    最近纪念日
-                  </Text>
-                  {nextPayload?.memorial ? (
-                    <>
-                      <Title level={4} className="!mb-0 !mt-1 !text-stone-900">
-                        {nextPayload.memorial.name}
-                      </Title>
-                      <Text type="secondary" className="text-sm">
-                        下次：{nextPayload.nextOccurrenceDate ?? '—'}
-                        {nextPayload.today ? ' · 就是今天' : ''}
-                      </Text>
-                    </>
-                  ) : (
-                    <Paragraph className="!mb-0 !mt-1 text-stone-600">
-                      暂无纪念日，点击右下角「+」添加
-                    </Paragraph>
-                  )}
-                </div>
+        <div className="relative z-10 flex flex-col gap-10">
+          {/* 顶部：标题与创建入口 */}
+          <header className="text-center">
+            <p className="memorial-accent text-2xl leading-none text-rose-700/85 sm:text-3xl">
+              Love &amp; Dates
+            </p>
+            <h1 className="memorial-display mt-2 text-4xl text-rose-950 sm:text-5xl">纪念日</h1>
+            <WavyTitleLine />
+            <Paragraph className="mx-auto mt-4 max-w-lg text-pretty text-sm leading-relaxed text-stone-600 sm:text-base">
+              简约留白，只放最重要的事：与你有关的日子，值得被轻轻记住、慢慢倒数。
+            </Paragraph>
+          </header>
+
+          {/* 恋爱倒计时与祝福语（位于照片墙上方） */}
+          <section className="rounded-2xl border border-rose-200/85 bg-gradient-to-b from-white/95 to-rose-50/90 p-6 shadow-md sm:p-8">
+            <div className="text-center">
+              <Text type="secondary" className="text-xs uppercase tracking-[0.2em] text-rose-800/70">
+                下一次心动
+              </Text>
+              <h2 className="memorial-display mt-2 text-2xl text-stone-900 sm:text-3xl">
+                {nextPayload?.memorial?.name ?? '还没有纪念日'}
+              </h2>
+              {nextPayload?.memorial ? (
+                <Text type="secondary" className="mt-1 block text-sm">
+                  下次：{nextPayload.nextOccurrenceDate ?? '—'}
+                  {nextPayload.today ? ' · 就是今天' : ''}
+                </Text>
+              ) : (
+                <Text type="secondary" className="mt-1 block text-sm">
+                  点击右下角「+」，写下第一个只属于你们的日子
+                </Text>
+              )}
+            </div>
+
+            {loadingNext && !nextPayload ? (
+              <div className="mt-6 flex justify-center py-6">
+                <Spin />
               </div>
-              {cd && nextPayload?.memorial ? (
-                <div className="rounded-xl border border-rose-200/80 bg-white px-4 py-3 text-center shadow-sm transition-shadow duration-200 hover:shadow-md sm:text-left">
+            ) : null}
+
+            {cd && nextPayload?.memorial ? (
+              <div className="mt-6 flex justify-center">
+                <div className="rounded-2xl border border-rose-200/90 bg-white/90 px-6 py-4 text-center shadow-inner">
                   <Text type="secondary" className="text-xs">
                     剩余时间
                   </Text>
-                  <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-rose-900 sm:text-2xl">
+                  <div className="mt-2 font-mono text-2xl font-semibold tabular-nums text-rose-900 sm:text-3xl">
                     <span>{cd.days}</span>
                     <span className="text-stone-500"> 天 </span>
                     <span>{String(cd.hours).padStart(2, '0')}</span>
@@ -288,78 +249,82 @@ export default function MemorialPage() {
                     <span>{String(cd.seconds).padStart(2, '0')}</span>
                   </div>
                 </div>
-              ) : null}
-            </div>
-          </Card>
-
-          <Card className="ls-surface overflow-hidden border-rose-200/90 p-0">
-            <div className="memorial-calendar-wrap px-2 pb-4 pt-2">
-              <Spin spinning={loadingList}>
-                <Calendar
-                  value={calValue}
-                  onChange={(v) => setCalValue(v)}
-                  headerRender={calendarHeaderRender}
-                  fullCellRender={fullCellRender}
-                  fullscreen={false}
-                />
-              </Spin>
-            </div>
-          </Card>
-
-          <Card className="ls-surface border-rose-200/90">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <Text strong className="text-stone-800">
-                  全部纪念日
-                </Text>
-                <Text type="secondary" className="ml-2 text-sm">
-                  管理名称与日期
-                </Text>
               </div>
-            </div>
-            <List
-              dataSource={sortedItems}
-              locale={{ emptyText: '暂无纪念日，请点击右下角「+」创建' }}
-              renderItem={(m) => (
-                <List.Item
-                  className="!px-0"
-                  actions={[
-                    <Button
-                      key="e"
-                      type="link"
-                      size="small"
-                      className="cursor-pointer"
-                      icon={<EditOutlined />}
-                      onClick={() => openEdit(m)}
-                    >
-                      编辑
-                    </Button>,
-                    <Button
-                      key="d"
-                      type="link"
-                      size="small"
-                      danger
-                      className="cursor-pointer"
-                      icon={<DeleteOutlined />}
-                      onClick={() => onDelete(m)}
-                    >
-                      删除
-                    </Button>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={<span className="text-stone-900">{m.name}</span>}
-                    description={
-                      <span className="text-stone-600">
-                        每年 {dayjs(m.memorialDate).format('M月D日')}
-                        {m.description ? ` · ${m.description}` : ''}
-                      </span>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
-          </Card>
+            ) : null}
+
+            <blockquote className="mx-auto mt-8 max-w-xl border-l-4 border-rose-300/80 pl-4 text-left text-base italic leading-relaxed text-stone-700 sm:text-lg">
+              {nextPayload?.today && nextPayload.memorial
+                ? '就是今天。把喜欢再说一遍，把拥抱再紧一点。'
+                : blessingText}
+            </blockquote>
+          </section>
+
+          {/* 照片墙 */}
+          <section className="rounded-2xl border border-rose-200/80 bg-white/75 p-4 shadow-sm backdrop-blur-sm sm:p-6">
+            <MemorialPhotoWall coupleId={coupleId} />
+          </section>
+
+          {/* 列表管理 */}
+          <Collapse
+            bordered={false}
+            className="rounded-xl bg-white/70 shadow-sm"
+            items={[
+              {
+                key: 'manage',
+                label: (
+                  <span className="font-medium text-stone-800">全部纪念日</span>
+                ),
+                children: (
+                  <div className="flex flex-col gap-4">
+                    <Spin spinning={loadingList}>
+                      <List
+                      dataSource={sortedItems}
+                      locale={{ emptyText: '暂无纪念日，点击右下角「+」创建' }}
+                      renderItem={(m) => (
+                        <List.Item
+                          className="!px-0"
+                          actions={[
+                            <Button
+                              key="e"
+                              type="link"
+                              size="small"
+                              className="cursor-pointer"
+                              icon={<EditOutlined />}
+                              onClick={() => openEdit(m)}
+                            >
+                              编辑
+                            </Button>,
+                            <Button
+                              key="d"
+                              type="link"
+                              size="small"
+                              danger
+                              className="cursor-pointer"
+                              icon={<DeleteOutlined />}
+                              onClick={() => onDelete(m)}
+                            >
+                              删除
+                            </Button>,
+                          ]}
+                        >
+                          <List.Item.Meta
+                            title={<span className="text-stone-900">{m.name}</span>}
+                            description={
+                              <span className="text-stone-600">
+                                每年 {dayjs(m.memorialDate).format('M月D日')}
+                                {m.description ? ` · ${m.description}` : ''}
+                              </span>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
+                    </Spin>
+                  </div>
+                ),
+              },
+            ]}
+          />
 
           <FloatButton
             type="primary"

@@ -311,8 +311,7 @@ export default function PlanPage() {
           <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1">
             <div className="rounded-2xl border border-rose-200/60 bg-white/70 p-3 shadow-[0_8px_30px_-12px_rgba(190,24,93,0.12)] backdrop-blur-md">
               <div className="px-2 pb-2 pt-1">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-800/50">计划</div>
-                <span className="text-sm font-semibold text-rose-950">快速切换</span>
+                <div className="text-[15px] font-semibold uppercase tracking-[0.12em] text-rose-800/50">计划</div>
               </div>
               {plansLoading && !plans.length ? (
                 <div className="flex justify-center py-12">
