@@ -40,8 +40,9 @@ export default function HomePage() {
       >
         {isAuthed ? (
           <Descriptions column={1} size="small">
+            <Descriptions.Item label="手机号">{user?.phone}</Descriptions.Item>
             <Descriptions.Item label="用户名">{user?.username}</Descriptions.Item>
-            <Descriptions.Item label="邮箱">{user?.email}</Descriptions.Item>
+            <Descriptions.Item label="邮箱">{user?.email ?? '—'}</Descriptions.Item>
             <Descriptions.Item label="用户ID">{user?.id}</Descriptions.Item>
           </Descriptions>
         ) : (

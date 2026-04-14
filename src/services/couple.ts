@@ -39,9 +39,9 @@ export async function getCoupleInfo() {
   return data
 }
 
-export async function inviteCouple(inviteeUserId: string) {
+export async function inviteCouple(inviteePhone: string) {
   const { data } = await http.post<ApiResponse<CoupleInviteResponse>>('/api/v1/couple/invite', {
-    inviteeUserId,
+    inviteePhone,
   })
   return data
 }

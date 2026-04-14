@@ -2,8 +2,9 @@ import { http } from './http'
 
 export type User = {
   id: string
+  phone: string
   username: string
-  email: string
+  email?: string | null
   avatarUrl?: string | null
   gender?: number | null
   birthday?: string | null
@@ -13,19 +14,27 @@ export type User = {
 }
 
 export type LoginRequest = {
-  email: string
+  phone: string
   password: string
 }
 
 export type RegisterRequest = {
+  phone: string
   username: string
-  email: string
   password: string
 }
 
 export type LoginResponse = {
   token: string
   user: User
+}
+
+export type UpdateProfilePayload = {
+  avatarUrl?: string | null
+  gender?: number | null
+  birthday?: string | null
+  username?: string | null
+  email?: string | null
 }
 
 type ApiResponse<T> = {
@@ -54,7 +63,7 @@ export async function getProfile() {
   return data
 }
 
-export async function updateProfile(req: Pick<User, 'avatarUrl' | 'gender' | 'birthday'>) {
+export async function updateProfile(req: UpdateProfilePayload) {
   const { data } = await http.put<ApiResponse<User>>('/api/v1/user/profile', req)
   return data
 }

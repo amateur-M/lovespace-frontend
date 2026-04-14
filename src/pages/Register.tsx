@@ -3,9 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import AuthPageShell from '../components/AuthPageShell'
 import { useAuthStore } from '../stores/authStore'
 
+const CN_MOBILE = /^1[3-9]\d{9}$/
+
 type FormValues = {
+  phone: string
   username: string
-  email: string
   password: string
   confirmPassword: string
 }
@@ -15,8 +17,9 @@ export default function Register() {
   const register = useAuthStore((s) => s.register)
 
   const onFinish = async (values: FormValues) => {
+    const phone = values.phone.replace(/\D/g, '')
     try {
-      await register(values.username, values.email, values.password)
+      await register(phone, values.username.trim(), values.password)
       message.success('注册成功，请登录')
       navigate('/login')
     } catch (e) {
@@ -29,22 +32,29 @@ export default function Register() {
       <Card className="ls-surface w-full !shadow-none" variant="borderless">
         <Form layout="vertical" onFinish={onFinish} autoComplete="off" className="!mt-0">
           <Form.Item
+            label="手机号"
+            name="phone"
+            rules={[
+              { required: true, message: '请输入手机号' },
+              {
+                validator: (_, v) => {
+                  const d = (v as string)?.replace(/\D/g, '') ?? ''
+                  if (!d) return Promise.reject(new Error('请输入手机号'))
+                  if (!CN_MOBILE.test(d)) return Promise.reject(new Error('请输入有效的 11 位手机号'))
+                  return Promise.resolve()
+                },
+              },
+            ]}
+          >
+            <Input placeholder="11 位手机号（用于登录）" maxLength={13} autoComplete="tel" />
+          </Form.Item>
+
+          <Form.Item
             label="用户名"
             name="username"
             rules={[{ required: true, message: '请输入用户名' }]}
           >
-            <Input placeholder="请输入用户名" />
-          </Form.Item>
-
-          <Form.Item
-            label="邮箱"
-            name="email"
-            rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '邮箱格式不正确' },
-            ]}
-          >
-            <Input placeholder="请输入邮箱" />
+            <Input placeholder="展示名称，可在个人资料中修改" />
           </Form.Item>
 
           <Form.Item

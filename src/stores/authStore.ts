@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { User } from '../services/auth'
+import type { UpdateProfilePayload, User } from '../services/auth'
 import * as authApi from '../services/auth'
 
 const TOKEN_KEY = 'lovespace_token'
@@ -11,10 +11,10 @@ type AuthState = {
   /** 是否已从 localStorage / Session 完成恢复；未完成前勿根据 isAuthed 跳转登录页 */
   authHydrated: boolean
   hydrate: () => Promise<void>
-  login: (email: string, password: string) => Promise<void>
-  register: (username: string, email: string, password: string) => Promise<void>
+  login: (phone: string, password: string) => Promise<void>
+  register: (phone: string, username: string, password: string) => Promise<void>
   fetchProfile: () => Promise<void>
-  updateProfile: (payload: Pick<User, 'avatarUrl' | 'gender' | 'birthday'>) => Promise<void>
+  updateProfile: (payload: UpdateProfilePayload) => Promise<void>
   uploadAvatar: (file: File) => Promise<string>
   logout: () => Promise<void>
 }
@@ -49,16 +49,16 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ authHydrated: true })
     }
   },
-  login: async (email, password) => {
-    const resp = await authApi.login({ email, password })
+  login: async (phone, password) => {
+    const resp = await authApi.login({ phone, password })
     if (resp.code !== 0) {
       throw new Error(resp.message || '登录失败')
     }
     localStorage.setItem(TOKEN_KEY, resp.data.token)
     set({ token: resp.data.token, user: resp.data.user, isAuthed: true, authHydrated: true })
   },
-  register: async (username, email, password) => {
-    const resp = await authApi.register({ username, email, password })
+  register: async (phone, username, password) => {
+    const resp = await authApi.register({ phone, username, password })
     if (resp.code !== 0) {
       throw new Error(resp.message || '注册失败')
     }

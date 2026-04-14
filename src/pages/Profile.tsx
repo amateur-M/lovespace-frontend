@@ -4,6 +4,8 @@ import { useEffect } from 'react'
 import { useAuthStore } from '../stores/authStore'
 
 type ProfileFormValues = {
+  username?: string
+  email?: string
   avatarUrl?: string
   gender?: number
   birthday?: dayjs.Dayjs
@@ -32,6 +34,12 @@ export default function Profile() {
     if (!form.isFieldTouched('birthday')) {
       updates.birthday = user.birthday ? dayjs(user.birthday) : undefined
     }
+    if (!form.isFieldTouched('username')) {
+      updates.username = user.username
+    }
+    if (!form.isFieldTouched('email')) {
+      updates.email = user.email ?? ''
+    }
     form.setFieldsValue({
       ...updates,
     })
@@ -43,6 +51,8 @@ export default function Profile() {
         avatarUrl: values.avatarUrl ?? null,
         gender: values.gender ?? null,
         birthday: values.birthday ? values.birthday.format('YYYY-MM-DD') : null,
+        username: values.username?.trim() ?? '',
+        email: values.email !== undefined && values.email !== null ? values.email.trim() : '',
       })
       message.success('个人信息已更新')
     } catch (e) {
@@ -88,16 +98,24 @@ export default function Profile() {
           </Upload>
         </Space>
 
-        <Form.Item label="用户名">
-          <Input value={user?.username} disabled />
+        <Form.Item label="手机号">
+          <Input value={user?.phone} disabled />
         </Form.Item>
 
-        <Form.Item label="邮箱">
-          <Input value={user?.email} disabled />
+        <Form.Item
+          label="用户名"
+          name="username"
+          rules={[{ required: true, message: '请输入用户名' }]}
+        >
+          <Input placeholder="展示名称" />
         </Form.Item>
 
-        <Form.Item label="头像地址" name="avatarUrl">
-          <Input placeholder="头像 URL（上传后自动填充）" />
+        <Form.Item
+          label="邮箱"
+          name="email"
+          rules={[{ type: 'email', message: '邮箱格式不正确' }]}
+        >
+          <Input placeholder="选填，用于联系与找回提示" allowClear />
         </Form.Item>
 
         <Form.Item label="性别" name="gender">

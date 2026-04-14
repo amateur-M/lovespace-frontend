@@ -50,7 +50,7 @@ export default function CoupleHome() {
   const refreshPendingCount = useInboxStore((s) => s.refreshPendingCount)
 
   const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteeId, setInviteeId] = useState('')
+  const [inviteePhone, setInviteePhone] = useState('')
   const [dateOpen, setDateOpen] = useState(false)
   const [pendingDate, setPendingDate] = useState<dayjs.Dayjs | null>(null)
 
@@ -86,16 +86,16 @@ export default function CoupleHome() {
   }
 
   const submitInvite = async () => {
-    const id = inviteeId.trim()
-    if (!id) {
-      message.warning('请输入对方的用户 ID')
+    const digits = inviteePhone.replace(/\D/g, '')
+    if (!digits || digits.length !== 11) {
+      message.warning('请输入对方的 11 位手机号')
       return
     }
     try {
-      await invite(id)
+      await invite(digits)
       message.success('邀请已发送，对方可在右上角「消息」中查看并处理')
       setInviteOpen(false)
-      setInviteeId('')
+      setInviteePhone('')
     } catch (e) {
       message.error(e instanceof Error ? e.message : '邀请失败')
     }
@@ -158,7 +158,7 @@ export default function CoupleHome() {
               </Space>
             </Empty>
             <Typography.Paragraph className="!mb-0 !mt-4 text-center text-sm text-rose-800/70">
-              需要对方的用户 ID（可在个人资料页查看）。若收到邀请，请打开右上角「消息」或上方入口处理。
+              需要对方的注册手机号。若收到邀请，请打开右上角「消息」或上方入口处理。
             </Typography.Paragraph>
           </Card>
         </>
@@ -275,12 +275,14 @@ export default function CoupleHome() {
         destroyOnClose
       >
         <Typography.Paragraph type="secondary" className="text-sm">
-          请输入对方的用户 ID（UUID）
+          请输入对方在 LoveSpace 注册时使用的 11 位手机号
         </Typography.Paragraph>
         <Input
-          placeholder="inviteeUserId"
-          value={inviteeId}
-          onChange={(e) => setInviteeId(e.target.value)}
+          placeholder="对方手机号"
+          inputMode="tel"
+          maxLength={13}
+          value={inviteePhone}
+          onChange={(e) => setInviteePhone(e.target.value)}
         />
       </Modal>
 

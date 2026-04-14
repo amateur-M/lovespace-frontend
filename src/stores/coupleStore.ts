@@ -9,8 +9,8 @@ type CoupleState = {
   error: string | null
   /** 拉取情侣信息；未绑定时 `info` 置为 null */
   fetchCoupleInfo: () => Promise<void>
-  /** 发送邀请（对方需在另一端接受） */
-  invite: (inviteeUserId: string) => Promise<string>
+  /** 发送邀请（对方需在另一端接受）；按对方手机号查找用户 */
+  invite: (inviteePhone: string) => Promise<string>
   /** 接受邀请后刷新状态 */
   accept: (bindingId: string, startDate?: string | null) => Promise<void>
   /** 更新恋爱开始日并刷新 */
@@ -45,9 +45,9 @@ export const useCoupleStore = create<CoupleState>((set, get) => ({
     }
   },
 
-  invite: async (inviteeUserId) => {
+  invite: async (inviteePhone) => {
     set({ error: null })
-    const resp = await coupleApi.inviteCouple(inviteeUserId)
+    const resp = await coupleApi.inviteCouple(inviteePhone)
     if (resp.code !== 0 || !resp.data?.bindingId) {
       throw new Error(resp.message || '发送邀请失败')
     }
