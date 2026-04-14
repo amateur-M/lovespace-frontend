@@ -25,9 +25,8 @@ export default function Profile() {
   useEffect(() => {
     if (!user) return
     const updates: ProfileFormValues = {}
-    if (!form.isFieldTouched('avatarUrl')) {
-      updates.avatarUrl = user.avatarUrl ?? undefined
-    }
+    // avatarUrl 总是从 store 同步，确保上传后立即刷新
+    updates.avatarUrl = user.avatarUrl ?? undefined
     if (!form.isFieldTouched('gender')) {
       updates.gender = user.gender ?? undefined
     }
@@ -64,7 +63,7 @@ export default function Profile() {
     <Card className="ls-surface !shadow-sm" title={<span className="font-medium text-orange-950">个人信息</span>}>
       <Form form={form} layout="vertical" onFinish={onSave}>
         <Space align="center" size={16} className="mb-4">
-          <Avatar size={72} src={form.getFieldValue('avatarUrl') || user?.avatarUrl || undefined}>
+          <Avatar size={72} src={user?.avatarUrl || undefined}>
             {user?.username?.slice(0, 1)?.toUpperCase() ?? 'U'}
           </Avatar>
           <Upload
@@ -85,8 +84,7 @@ export default function Profile() {
             }}
             customRequest={async ({ file, onSuccess, onError }) => {
               try {
-                const url = await uploadAvatar(file as File)
-                form.setFieldValue('avatarUrl', url)
+                await uploadAvatar(file as File)
                 message.success('头像上传成功')
                 onSuccess?.({}, new XMLHttpRequest())
               } catch (err) {
