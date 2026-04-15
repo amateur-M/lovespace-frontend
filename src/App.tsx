@@ -13,6 +13,7 @@ import Chat from './pages/Chat'
 import Plan from './pages/Plan'
 import EmotionAnalysis from './pages/EmotionAnalysis'
 import AILoveLetter from './pages/AILoveLetter'
+import AILoveQA from './pages/AILoveQA'
 import Memorial from './pages/Memorial'
 import Inbox from './pages/Inbox'
 import Register from './pages/Register'
@@ -40,6 +41,7 @@ function App() {
           <Route path="/memorial" element={<Memorial />} />
           <Route path="/emotion" element={<EmotionAnalysis />} />
           <Route path="/love-letter" element={<AILoveLetter />} />
+          <Route path="/love-qa" element={<AILoveQA />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

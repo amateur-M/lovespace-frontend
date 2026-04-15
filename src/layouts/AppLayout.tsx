@@ -1,6 +1,7 @@
 import {
   CalendarOutlined,
   CarryOutOutlined,
+  CommentOutlined,
   EditOutlined,
   GiftOutlined,
   HeartOutlined,
@@ -27,6 +28,7 @@ const authedNavItems: NavItem[] = [
   { to: '/plan', label: '共同计划', icon: <CarryOutOutlined aria-hidden /> },
   { to: '/memorial', label: '纪念日', icon: <GiftOutlined aria-hidden /> },
   { to: '/emotion', label: '情感洞察', icon: <LineChartOutlined aria-hidden /> },
+  { to: '/love-qa', label: '恋爱问答', icon: <CommentOutlined aria-hidden /> },
   { to: '/love-letter', label: 'AI情书', icon: <EditOutlined aria-hidden /> },
 ]
 
