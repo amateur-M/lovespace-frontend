@@ -1,31 +1,20 @@
 import {
-  BulbOutlined,
   CommentOutlined,
-  HistoryOutlined,
+  HeartOutlined,
+  MenuOutlined,
   PlusOutlined,
+  ReloadOutlined,
   SendOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
-import {
-  Button,
-  Card,
-  Collapse,
-  Drawer,
-  Empty,
-  Form,
-  Input,
-  List,
-  Spin,
-  Typography,
-  message,
-} from 'antd'
+import { Button, Form, Input, Modal, Spin, Typography, message } from 'antd'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
   getLoveQaConversations,
   getLoveQaMessages,
-  postLoveQaChat,
+  postLoveQaChatStream,
   postLoveQaIngest,
   type LoveQaConversationSummary,
   type LoveQaMessageLine,
@@ -33,7 +22,7 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
 
-const { Title, Paragraph, Text } = Typography
+const { Text, Title } = Typography
 
 type UiMessage = {
   key: string
@@ -59,9 +48,12 @@ export default function AILoveQAPage() {
   const [listLoading, setListLoading] = useState(false)
   const [conversations, setConversations] = useState<LoveQaConversationSummary[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [ingestOpen, setIngestOpen] = useState(false)
   const [ingestSubmitting, setIngestSubmitting] = useState(false)
   const [form] = Form.useForm<{ title?: string; text: string }>()
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
+  const prevConversationIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!isAuthed) return
@@ -71,7 +63,7 @@ export default function AILoveQAPage() {
   const loadConversations = useCallback(async () => {
     setListLoading(true)
     try {
-      const resp = await getLoveQaConversations(1, 30)
+      const resp = await getLoveQaConversations(1, 40)
       if (resp.code !== 0 || !resp.data) {
         throw new Error(resp.message || '加载会话列表失败')
       }
@@ -88,19 +80,29 @@ export default function AILoveQAPage() {
     void loadConversations()
   }, [isAuthed, loadConversations])
 
-  const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages, scrollToBottom])
+  /** 仅在消息列表容器内滚动；切换会话瞬间滚到底，同会话内新消息平滑滚到底 */
+  useLayoutEffect(() => {
+    const el = messagesScrollRef.current
+    if (!el || messages.length === 0) {
+      prevConversationIdRef.current = conversationId
+      return
+    }
+    const switchedConv = prevConversationIdRef.current !== conversationId
+    prevConversationIdRef.current = conversationId
+    if (switchedConv) {
+      el.scrollTop = el.scrollHeight
+    } else {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    }
+  }, [messages, conversationId])
 
   const startNewChat = useCallback(() => {
     setConversationId(null)
     setMessages([])
     setInput('')
-    message.info('已开始新对话')
+    setHistoryOpen(false)
+    window.setTimeout(() => composerRef.current?.focus(), 0)
+    message.success('已开始新对话')
   }, [])
 
   const applyServerMessages = useCallback((lines: LoveQaMessageLine[]) => {
@@ -124,6 +126,7 @@ export default function AILoveQAPage() {
         applyServerMessages(resp.data.messages)
         setHistoryOpen(false)
         message.success('已切换会话')
+        window.setTimeout(() => composerRef.current?.focus(), 0)
       } catch (e) {
         message.error(e instanceof Error ? e.message : '加载消息失败')
       } finally {
@@ -138,27 +141,47 @@ export default function AILoveQAPage() {
     if (!text || sending) return
     setSending(true)
     const userKey = newKey()
-    setMessages((prev) => [...prev, { key: userKey, role: 'user', content: text }])
+    const assistantKey = newKey()
+    setMessages((prev) => [
+      ...prev,
+      { key: userKey, role: 'user', content: text },
+      { key: assistantKey, role: 'assistant', content: '' },
+    ])
     setInput('')
+    const ac = new AbortController()
+    const timeoutId = window.setTimeout(() => ac.abort(), 120_000)
     try {
-      const resp = await postLoveQaChat({
-        message: text,
-        conversationId: conversationId ?? undefined,
-        coupleId,
-      })
-      if (resp.code !== 0 || resp.data == null) {
-        throw new Error(resp.message || '发送失败')
-      }
-      setConversationId(resp.data.conversationId)
-      setMessages((prev) => [
-        ...prev,
-        { key: newKey(), role: 'assistant', content: resp.data!.reply },
-      ])
-      void loadConversations()
+      await postLoveQaChatStream(
+        {
+          message: text,
+          conversationId: conversationId ?? undefined,
+          coupleId,
+        },
+        {
+          onMeta: (cid) => setConversationId(cid),
+          onDelta: (chunk) => {
+            setMessages((prev) =>
+              prev.map((m) => (m.key === assistantKey ? { ...m, content: m.content + chunk } : m)),
+            )
+          },
+          onDone: ({ reply, conversationId: cid }) => {
+            setConversationId(cid)
+            setMessages((prev) =>
+              prev.map((m) => (m.key === assistantKey ? { ...m, content: reply } : m)),
+            )
+            void loadConversations()
+          },
+          onError: () => undefined,
+        },
+        ac.signal,
+      )
     } catch (e) {
-      setMessages((prev) => prev.filter((m) => m.key !== userKey))
-      message.error(e instanceof Error ? e.message : '发送失败')
+      setMessages((prev) => prev.filter((m) => m.key !== userKey && m.key !== assistantKey))
+      const errMsg =
+        e instanceof Error && e.name === 'AbortError' ? '请求超时，请稍后再试' : e instanceof Error ? e.message : '发送失败'
+      message.error(errMsg)
     } finally {
+      window.clearTimeout(timeoutId)
       setSending(false)
     }
   }, [input, sending, conversationId, coupleId, loadConversations])
@@ -181,6 +204,7 @@ export default function AILoveQAPage() {
         }
         message.success('已提交知识库（分片入库可能需要数秒）')
         form.resetFields()
+        setIngestOpen(false)
       } catch (e) {
         message.error(e instanceof Error ? e.message : '入库失败')
       } finally {
@@ -190,254 +214,281 @@ export default function AILoveQAPage() {
     [form],
   )
 
-  const historyList = useMemo(
+  const sidebarBody = useMemo(
     () => (
-      <List
-        loading={listLoading}
-        dataSource={conversations}
-        locale={{ emptyText: '暂无历史会话' }}
-        renderItem={(item) => (
-          <List.Item className="!px-0 !py-1">
-            <button
-              type="button"
-              onClick={() => void openConversation(item)}
-              className="flex w-full cursor-pointer flex-col rounded-xl border border-rose-200/80 bg-white/95 px-3 py-2.5 text-left ring-1 ring-transparent transition-all duration-200 hover:border-[#F472B6]/60 hover:bg-rose-50/90 hover:ring-rose-200/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DB2777]"
-            >
-              <Text className="line-clamp-2 text-[13px] font-medium text-[#831843]">
-                {item.title?.trim() || '（无标题）'}
-              </Text>
-              <Text className="text-xs text-[#831843]/55">
-                {item.updatedAt ? dayjs(item.updatedAt).format('YYYY-MM-DD HH:mm') : ''}
-              </Text>
-            </button>
-          </List.Item>
-        )}
-      />
+      <div className="flex min-h-0 flex-1 flex-col gap-1 px-2 pb-3 pt-2">
+        <Button
+          type="default"
+          icon={<PlusOutlined aria-hidden />}
+          onClick={startNewChat}
+          className="!flex !h-11 !items-center !justify-center !gap-2 !rounded-xl !border-rose-200/90 !bg-white !font-medium !text-[#831843] !shadow-sm transition-colors duration-200 hover:!border-[#F472B6] hover:!bg-rose-50/90"
+        >
+          新建对话
+        </Button>
+        <div className="mt-3 px-1">
+          <Text className="text-[11px] font-semibold uppercase tracking-wide text-[#831843]/45">最近对话</Text>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto pr-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
+          {listLoading ? (
+            <div className="flex justify-center py-6">
+              <Spin />
+            </div>
+          ) : conversations.length === 0 ? (
+            <Text className="block px-2 py-4 text-center text-xs text-[#831843]/50">暂无历史，在右侧开始提问吧</Text>
+          ) : (
+            <ul className="space-y-0.5" aria-label="会话列表">
+              {conversations.map((item) => {
+                const active = conversationId === item.conversationId
+                return (
+                  <li key={item.conversationId}>
+                    <button
+                      type="button"
+                      onClick={() => void openConversation(item)}
+                      className={[
+                        'flex w-full cursor-pointer flex-col rounded-xl border px-2.5 py-2 text-left transition-colors duration-200',
+                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DB2777]',
+                        active
+                          ? 'border-rose-300/90 bg-white shadow-sm ring-1 ring-rose-200/80'
+                          : 'border-transparent bg-transparent hover:border-rose-200/70 hover:bg-white/80',
+                      ].join(' ')}
+                    >
+                      <span className="line-clamp-2 text-[13px] font-medium leading-snug text-[#831843]">
+                        {item.title?.trim() || '（无标题）'}
+                      </span>
+                      <span className="mt-0.5 text-[11px] text-[#831843]/45">
+                        {item.updatedAt ? dayjs(item.updatedAt).format('MM-DD HH:mm') : ''}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+        <div className="mt-auto border-t border-rose-200/60 pt-2">
+          <Button
+            type="text"
+            size="small"
+            icon={<ReloadOutlined aria-hidden />}
+            onClick={() => void loadConversations()}
+            className="!w-full !justify-start !text-[#831843]/70 hover:!bg-rose-100/60 hover:!text-[#831843]"
+          >
+            刷新列表
+          </Button>
+        </div>
+      </div>
     ),
-    [conversations, listLoading, openConversation],
+    [conversationId, conversations, listLoading, loadConversations, openConversation, startNewChat],
+  )
+
+  const composer = (opts: { large?: boolean }) => (
+    <div
+      className={[
+        'border border-rose-200/90 bg-white shadow-sm transition-shadow duration-200 focus-within:border-[#F472B6]/80 focus-within:shadow-md',
+        opts.large ? 'rounded-[1.75rem] px-4 py-3 sm:px-5 sm:py-4' : 'rounded-2xl px-3 py-2.5',
+      ].join(' ')}
+    >
+      <Input.TextArea
+        ref={composerRef}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="向恋爱助手提问，例如：吵架后怎么和好比较快？"
+        autoSize={opts.large ? { minRows: 2, maxRows: 5 } : { minRows: 1, maxRows: 6 }}
+        maxLength={4000}
+        disabled={sending}
+        onPressEnter={(e) => {
+          if (!e.shiftKey) {
+            e.preventDefault()
+            void onSend()
+          }
+        }}
+        className="!resize-none !border-0 !bg-transparent !p-0 !shadow-none !text-[15px] !leading-relaxed !text-[#431407] placeholder:!text-[#831843]/40 focus:!shadow-none"
+      />
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-rose-100/90 pt-2">
+        <div className="flex flex-wrap items-center gap-1">
+          <Button
+            type="text"
+            size="small"
+            icon={<UploadOutlined className="text-rose-600" aria-hidden />}
+            onClick={() => setIngestOpen(true)}
+            className="!text-[#831843]/80 hover:!bg-rose-50"
+          >
+            补充知识库
+          </Button>
+          {coupleLoading ? <Spin size="small" className="ml-1" /> : null}
+        </div>
+        <Button
+          type="primary"
+          shape="circle"
+          size="large"
+          icon={<SendOutlined aria-hidden />}
+          loading={sending}
+          onClick={() => void onSend()}
+          disabled={!input.trim()}
+          aria-label="发送"
+          className="!flex !h-11 !w-11 !min-w-0 !items-center !justify-center !border-[#DB2777] !bg-[#DB2777] hover:!border-[#be185d] hover:!bg-[#be185d] disabled:!opacity-40"
+        />
+      </div>
+    </div>
   )
 
   if (!isAuthed) {
     return <Navigate to="/login" replace />
   }
 
-  return (
-    <div className="love-qa-page space-y-8 sm:space-y-10">
-      <section
-        className="relative overflow-hidden rounded-3xl border border-rose-200/90 bg-gradient-to-br from-[#FDF2F8] via-white to-rose-50/95 px-5 py-8 shadow-sm sm:px-8 sm:py-10"
-        aria-labelledby="love-qa-hero-title"
-      >
-        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#F472B6]/25 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 left-10 h-44 w-44 rounded-full bg-[#DB2777]/15 blur-3xl" />
+  const hasThread = messages.length > 0
 
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
-          <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/90 bg-white/90 px-3 py-1 text-xs font-medium text-[#831843]/90 shadow-sm backdrop-blur-sm transition-colors duration-200">
-              <BulbOutlined className="text-[#DB2777]" aria-hidden />
-              AI 恋爱问答
-            </div>
-            <Title
-              level={2}
-              id="love-qa-hero-title"
-              className="!mb-0 !font-['Ma_Shan_Zheng',serif] !text-3xl !font-normal !leading-snug !tracking-wide !text-[#831843] sm:!text-4xl"
-            >
-              有问有答，一起更懂爱
-            </Title>
-            <Paragraph className="!mb-0 max-w-prose !text-[15px] !leading-relaxed !text-[#831843]/85">
-              结合知识库检索与多轮对话记忆，回答恋爱与情感问题。可随时补充你们专属的「知识片段」入库；历史会话保存在云端，换设备也能回顾。
-            </Paragraph>
+  return (
+    <div className="love-qa-page flex h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-2xl border border-rose-200/90 bg-white shadow-sm lg:flex-row">
+      {/* 侧栏：千问式浅底 + 新建 / 最近对话（大屏） */}
+      <aside
+        className="hidden h-full min-h-0 w-[min(100%,280px)] shrink-0 flex-col overflow-hidden border-b border-rose-100/90 bg-gradient-to-b from-[#FDF2F8] via-[#FFF7FB] to-white lg:flex lg:border-b-0 lg:border-r"
+        aria-label="恋爱问答侧栏"
+      >
+        <div className="flex items-center gap-2 border-b border-rose-100/80 px-4 py-4">
+          <div
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-md shadow-rose-300/40"
+            aria-hidden
+          >
+            <HeartOutlined className="text-lg" />
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={startNewChat}
-              className="!h-10 !min-w-[104px] !border-[#DB2777] !bg-[#DB2777] !px-5 transition-colors duration-200 hover:!border-[#be185d] hover:!bg-[#be185d]"
-            >
-              新对话
-            </Button>
-            <Button
-              icon={<HistoryOutlined />}
-              onClick={() => setHistoryOpen(true)}
-              className="!h-10 border-amber-600/55 !bg-white/90 !text-amber-900 transition-colors duration-200 hover:border-amber-600 hover:!bg-amber-50 lg:hidden"
-            >
-              历史会话
-            </Button>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold text-[#831843]">恋爱问答</div>
+            <div className="truncate text-xs text-[#831843]/55">知识库 + 多轮记忆</div>
           </div>
         </div>
+        {sidebarBody}
+      </aside>
+
+      {/* 主区 */}
+      <section className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-white">
+        {/* 移动端顶栏 */}
+        <header className="flex items-center justify-between gap-2 border-b border-rose-100/90 px-3 py-2.5 lg:hidden">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 text-white">
+              <CommentOutlined />
+            </div>
+            <span className="truncate text-sm font-semibold text-[#831843]">恋爱问答</span>
+          </div>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <Button
+              type="text"
+              icon={<PlusOutlined className="text-[#831843]" aria-hidden />}
+              onClick={startNewChat}
+              aria-label="新建对话"
+            />
+            <Button
+              type="text"
+              icon={<MenuOutlined className="text-lg text-[#831843]" aria-hidden />}
+              onClick={() => setHistoryOpen(true)}
+              aria-label="打开历史会话"
+            />
+          </div>
+        </header>
+
+        {!hasThread ? (
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8 sm:px-8">
+            <div className="mb-8 flex flex-col items-center text-center">
+              <div
+                className="mb-5 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-300/35"
+                aria-hidden
+              >
+                <HeartOutlined className="text-3xl" />
+              </div>
+              <Title level={3} className="!mb-2 !text-xl !font-semibold !text-[#831843] sm:!text-2xl">
+                你好，我是恋爱助手
+              </Title>
+              <Text className="max-w-md text-[15px] leading-relaxed text-[#831843]/75">
+                结合你们的知识库与多轮对话，一起回答情感与相处问题。左侧可查看最近对话；也可随时补充专属片段入库。
+              </Text>
+            </div>
+            <div className="w-full max-w-2xl">{composer({ large: true })}</div>
+          </div>
+        ) : (
+          <>
+            <div
+              ref={messagesScrollRef}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 py-4 sm:px-6 sm:py-5"
+              role="log"
+              aria-live="polite"
+              aria-relevant="additions"
+            >
+              <div className="mx-auto max-w-3xl space-y-3">
+                {messages.map((m) => (
+                  <div
+                    key={m.key}
+                    className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={[
+                        'max-w-[min(100%,560px)] rounded-2xl px-3.5 py-2.5 text-[15px] leading-relaxed shadow-sm',
+                        m.role === 'user'
+                          ? 'bg-[#DB2777] text-white'
+                          : 'border border-rose-200/80 bg-[#FFFBFC] text-[#431407]',
+                      ].join(' ')}
+                    >
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="shrink-0 border-t border-rose-100/90 bg-gradient-to-t from-white via-white to-[#FFF7FB]/95 px-3 py-3 shadow-[0_-8px_24px_-12px_rgba(190,24,93,0.12)] sm:px-6 sm:py-4">
+              <div className="mx-auto max-w-3xl">{composer({ large: false })}</div>
+            </div>
+          </>
+        )}
       </section>
 
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch lg:gap-8">
-        <aside className="hidden w-full shrink-0 lg:block lg:w-72">
-          <Card
-            title={
-              <span className="flex items-center gap-2 text-[#831843]">
-                <HistoryOutlined className="text-[#DB2777]" aria-hidden />
-                历史会话
-              </span>
-            }
-            className="ls-surface !border-rose-200/90 transition-shadow duration-200 hover:shadow-md"
-            styles={{ body: { paddingTop: 8 } }}
-          >
-            <div className="mb-2 flex justify-end">
-              <Button type="link" size="small" onClick={() => void loadConversations()} className="!px-1">
-                刷新
-              </Button>
-            </div>
-            {historyList}
-          </Card>
-        </aside>
-
-        <div className="min-w-0 flex-1 space-y-5">
-          <Card className="ls-surface flex min-h-[420px] flex-col !border-rose-200/90 transition-shadow duration-200 hover:shadow-md sm:min-h-[480px]">
-            <div className="mb-3 flex items-center justify-between gap-2 border-b border-rose-200/80 pb-3">
-              <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#831843]">
-                <CommentOutlined className="text-[#DB2777]" aria-hidden />
-                对话
-                {conversationId ? (
-                  <Text className="text-xs font-normal text-[#831843]/55">
-                    会话 {conversationId.slice(0, 8)}…
-                  </Text>
-                ) : (
-                  <Text className="text-xs font-normal text-[#831843]/55">
-                    新会话
-                  </Text>
-                )}
-              </span>
-              {coupleLoading ? <Spin size="small" /> : null}
-            </div>
-
-            <div className="relative flex min-h-0 flex-1 flex-col">
-              <div
-                className="mb-4 max-h-[min(52vh,520px)] flex-1 space-y-3 overflow-y-auto rounded-xl border border-rose-200/80 bg-gradient-to-b from-white to-[#FDF2F8]/55 px-3 py-4 shadow-inner ring-1 ring-rose-100/90 sm:px-4"
-                role="log"
-                aria-live="polite"
-                aria-relevant="additions"
-              >
-                {messages.length === 0 ? (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={
-                      <span className="text-[#831843]/75">
-                        输入你的问题开始对话；左侧可打开历史会话（移动端点「历史会话」）。
-                      </span>
-                    }
-                  />
-                ) : (
-                  messages.map((m) => (
-                    <div
-                      key={m.key}
-                      className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={[
-                          'max-w-[min(100%,520px)] rounded-2xl px-3.5 py-2.5 text-[15px] leading-relaxed shadow-sm transition-colors duration-200',
-                          m.role === 'user'
-                            ? 'bg-[#DB2777] text-white'
-                            : 'border border-[#F472B6]/45 bg-white text-[#831843]',
-                        ].join(' ')}
-                      >
-                        {m.content}
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div ref={bottomRef} />
-              </div>
-
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <Input.TextArea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="例如：吵架后怎么和好比较快？"
-                  autoSize={{ minRows: 2, maxRows: 6 }}
-                  maxLength={4000}
-                  showCount
-                  disabled={sending}
-                  onPressEnter={(e) => {
-                    if (!e.shiftKey) {
-                      e.preventDefault()
-                      void onSend()
-                    }
-                  }}
-                  className="!resize-none !border-rose-200/90 focus:!border-[#F472B6]"
-                />
-                <Button
-                  type="primary"
-                  icon={<SendOutlined />}
-                  loading={sending}
-                  onClick={() => void onSend()}
-                  className="shrink-0 !h-10 !border-[#DB2777] !bg-[#DB2777] transition-colors duration-200 hover:!border-[#be185d] hover:!bg-[#be185d] sm:!h-[52px] sm:!px-6"
-                >
-                  发送
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          <Collapse
-            bordered={false}
-            className="ls-surface overflow-hidden !border-rose-200/90 bg-white/95 transition-shadow duration-200 hover:shadow-md"
-            items={[
-              {
-                key: 'ingest',
-                label: (
-                  <span className="flex items-center gap-2 font-medium text-[#831843]">
-                    <UploadOutlined className="text-[#DB2777]" aria-hidden />
-                    补充知识库（可选）
-                  </span>
-                ),
-                children: (
-                  <Form form={form} layout="vertical" onFinish={onIngest} className="max-w-3xl">
-                    <Form.Item label="标题（可选）" name="title">
-                      <Input placeholder="例如：我们吵架后的沟通约定" maxLength={120} />
-                    </Form.Item>
-                    <Form.Item
-                      label="正文"
-                      name="text"
-                      rules={[{ required: true, message: '请填写正文' }]}
-                    >
-                      <Input.TextArea
-                        rows={6}
-                        placeholder="粘贴文章片段、笔记或你们约定的事项，将分片写入向量库供问答引用。"
-                        maxLength={50_000}
-                        showCount
-                      />
-                    </Form.Item>
-                    <Form.Item>
-                      <Button
-                        type="primary"
-                        htmlType="submit"
-                        loading={ingestSubmitting}
-                        icon={<UploadOutlined />}
-                        className="!border-[#DB2777] !bg-[#DB2777] transition-colors duration-200 hover:!border-[#be185d] hover:!bg-[#be185d]"
-                      >
-                        提交入库
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                ),
-              },
-            ]}
-          />
-        </div>
-      </div>
-
-      <Drawer
-        title="历史会话"
-        placement="left"
-        width={320}
+      {/* 移动端历史抽屉 */}
+      <Modal
+        title={<span className="text-[#831843]">历史会话</span>}
         open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        className="[&_.ant-drawer-body]:!pt-2"
+        onCancel={() => setHistoryOpen(false)}
+        footer={null}
+        width={360}
+        destroyOnClose
+        classNames={{ body: '!pt-1' }}
       >
-        <div className="mb-2 flex justify-end">
-          <Button type="link" size="small" onClick={() => void loadConversations()}>
-            刷新
-          </Button>
-        </div>
-        {historyList}
-      </Drawer>
+        <div className="max-h-[70vh] overflow-y-auto">{sidebarBody}</div>
+      </Modal>
+
+      <Modal
+        title={<span className="text-[#831843]">补充知识库</span>}
+        open={ingestOpen}
+        onCancel={() => !ingestSubmitting && setIngestOpen(false)}
+        footer={null}
+        destroyOnClose
+        width={560}
+      >
+        <Form form={form} layout="vertical" onFinish={onIngest} className="pt-1">
+          <Form.Item label="标题（可选）" name="title">
+            <Input placeholder="例如：我们吵架后的沟通约定" maxLength={120} />
+          </Form.Item>
+          <Form.Item label="正文" name="text" rules={[{ required: true, message: '请填写正文' }]}>
+            <Input.TextArea
+              rows={8}
+              placeholder="粘贴文章片段、笔记或约定事项，将分片写入向量库供问答引用。"
+              maxLength={50_000}
+              showCount
+            />
+          </Form.Item>
+          <Form.Item className="!mb-0 flex justify-end gap-2">
+            <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
+              取消
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={ingestSubmitting}
+              icon={<UploadOutlined aria-hidden />}
+              className="!border-[#DB2777] !bg-[#DB2777] hover:!border-[#be185d] hover:!bg-[#be185d]"
+            >
+              提交入库
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }
