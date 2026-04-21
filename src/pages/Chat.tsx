@@ -158,38 +158,68 @@ export default function ChatPage() {
       setSending(true)
       try {
         const ws = wsRef.current
-        if (!ws || !wsConnectedRef.current || ws.readyState !== WebSocket.OPEN) {
-          throw new Error('WebSocket 未连接，请稍后重试')
+        const wsReady = ws && wsConnectedRef.current && ws.readyState === WebSocket.OPEN
+
+        if (wsReady) {
+          ws.send(
+            JSON.stringify(
+              scheduledTime
+                ? {
+                    type: 'scheduled',
+                    coupleId,
+                    receiverId: partner.id,
+                    content,
+                    messageType: 'text',
+                    scheduledTime: scheduledTime.format('YYYY-MM-DDTHH:mm:ss'),
+                  }
+                : {
+                    type: 'send',
+                    coupleId,
+                    receiverId: partner.id,
+                    content,
+                    messageType: 'text',
+                  },
+            ),
+          )
+          antdMessage.success(scheduledTime ? '定时消息已创建' : '发送成功')
+          return
         }
 
-        ws.send(
-          JSON.stringify(
-            scheduledTime
-              ? {
-                  type: 'scheduled',
-                  coupleId,
-                  receiverId: partner.id,
-                  content,
-                  messageType: 'text',
-                  scheduledTime: scheduledTime.format('YYYY-MM-DDTHH:mm:ss'),
-                }
-              : {
-                  type: 'send',
-                  coupleId,
-                  receiverId: partner.id,
-                  content,
-                  messageType: 'text',
-                },
-          ),
-        )
-        antdMessage.success(scheduledTime ? '定时消息已创建' : '发送成功')
+        // WebSocket 未就绪时走 HTTP（与后端 MessageController 一致），避免开发环境代理/网络导致无法发送
+        if (scheduledTime) {
+          const { data } = await http.post<ApiResponse<ChatMessage>>('/api/v1/messages/scheduled', {
+            scheduledTime: scheduledTime.format('YYYY-MM-DDTHH:mm:ss'),
+            coupleId,
+            receiverId: partner.id,
+            content,
+            messageType: 'text',
+          })
+          if (data.code !== 0 || !data.data) {
+            throw new Error(data.message || '创建定时消息失败')
+          }
+          upsertMessage(data.data)
+          antdMessage.success('定时消息已创建')
+        } else {
+          const { data } = await http.post<ApiResponse<ChatMessage>>('/api/v1/messages/send', {
+            coupleId,
+            receiverId: partner.id,
+            content,
+            messageType: 'text',
+          })
+          if (data.code !== 0 || !data.data) {
+            throw new Error(data.message || '发送失败')
+          }
+          upsertMessage(data.data)
+          setTimeout(scrollToBottom, 0)
+          antdMessage.success('发送成功')
+        }
       } catch (e) {
         antdMessage.error(e instanceof Error ? e.message : '发送失败')
       } finally {
         setSending(false)
       }
     },
-    [coupleId, partner?.id],
+    [coupleId, partner?.id, scrollToBottom, upsertMessage],
   )
 
   const onRetract = useCallback(async (messageId: string) => {
@@ -276,7 +306,7 @@ export default function ChatPage() {
         // ignore
       }
     }
-  }, [coupleId, meId, partner, scrollToBottom, upsertMessage])
+  }, [coupleId, meId, partner?.id, scrollToBottom, upsertMessage])
 
   const onMessageScroll = useCallback(async () => {
     const el = chatBodyRef.current
