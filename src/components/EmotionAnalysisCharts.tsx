@@ -17,13 +17,19 @@ export default function EmotionAnalysisCharts({ distribution, trend, className }
   const pieRef = useRef<HTMLDivElement | null>(null)
   const lineRef = useRef<HTMLDivElement | null>(null)
 
+  // 合并为单次 effect：减少 StrictMode 下两套 effect 各自 mount/cleanup 带来的重复初始化与闪动
   useEffect(() => {
-    if (!pieRef.current) return
-    const chart = echarts.init(pieRef.current)
+    const pieEl = pieRef.current
+    const lineEl = lineRef.current
+    if (!pieEl || !lineEl) return
+
+    const pieChart = echarts.init(pieEl)
+    const lineChart = echarts.init(lineEl)
+
     const entries = Object.entries(distribution).filter(([, v]) => v > 0)
     const sum = Object.values(distribution).reduce((a, b) => a + b, 0)
     if (sum === 0 || entries.length === 0) {
-      chart.setOption({
+      pieChart.setOption({
         title: {
           text: '暂无占比数据',
           left: 'center',
@@ -32,7 +38,7 @@ export default function EmotionAnalysisCharts({ distribution, trend, className }
         },
       })
     } else {
-      chart.setOption({
+      pieChart.setOption({
         color: PIE_COLORS,
         tooltip: {
           trigger: 'item',
@@ -60,21 +66,11 @@ export default function EmotionAnalysisCharts({ distribution, trend, className }
         ],
       })
     }
-    const onResize = () => chart.resize()
-    window.addEventListener('resize', onResize)
-    return () => {
-      window.removeEventListener('resize', onResize)
-      chart.dispose()
-    }
-  }, [distribution])
 
-  useEffect(() => {
-    if (!lineRef.current) return
-    const chart = echarts.init(lineRef.current)
     const dates = trend.map((t) => t.date)
     const scores = trend.map((t) => t.moodScore)
     if (trend.length === 0) {
-      chart.setOption({
+      lineChart.setOption({
         title: {
           text: '暂无按日趋势',
           left: 'center',
@@ -83,7 +79,7 @@ export default function EmotionAnalysisCharts({ distribution, trend, className }
         },
       })
     } else {
-      chart.setOption({
+      lineChart.setOption({
         color: ['#e11d48'],
         tooltip: {
           trigger: 'axis',
@@ -134,13 +130,18 @@ export default function EmotionAnalysisCharts({ distribution, trend, className }
         ],
       })
     }
-    const onResize = () => chart.resize()
+
+    const onResize = () => {
+      pieChart.resize()
+      lineChart.resize()
+    }
     window.addEventListener('resize', onResize)
     return () => {
       window.removeEventListener('resize', onResize)
-      chart.dispose()
+      pieChart.dispose()
+      lineChart.dispose()
     }
-  }, [trend])
+  }, [distribution, trend])
 
   return (
     <div className={`grid gap-4 lg:grid-cols-2 ${className ?? ''}`}>

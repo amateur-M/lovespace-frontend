@@ -15,7 +15,12 @@ export type EmotionAnalysisReport = {
 /**
  * 情感分析报告（含通义千问解读，可能较慢）。
  */
-export async function getEmotionReport(coupleId: string, startDate?: string | null, endDate?: string | null) {
+export async function getEmotionReport(
+  coupleId: string,
+  startDate?: string | null,
+  endDate?: string | null,
+  signal?: AbortSignal,
+) {
   const { data } = await http.get<ApiResponse<EmotionAnalysisReport>>('/api/v1/ai/emotion', {
     params: {
       coupleId,
@@ -23,6 +28,7 @@ export async function getEmotionReport(coupleId: string, startDate?: string | nu
       ...(endDate ? { endDate } : {}),
     },
     timeout: 120_000,
+    signal,
   })
   return data
 }

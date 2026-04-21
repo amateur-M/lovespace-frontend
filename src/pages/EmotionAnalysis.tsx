@@ -21,6 +21,7 @@ import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
+import axios from 'axios'
 import EmotionAnalysisCharts from '../components/EmotionAnalysisCharts'
 import { moodLabel } from '../components/MoodTag'
 import { getEmotionReport, type EmotionAnalysisReport, type OverallMood } from '../services/emotion'
@@ -57,27 +58,36 @@ export default function EmotionAnalysisPage() {
     fetchCoupleInfo().catch(() => undefined)
   }, [isAuthed, fetchCoupleInfo])
 
-  const loadReport = useCallback(async () => {
-    if (!coupleId) return
-    setLoading(true)
-    try {
-      const start = range[0].format('YYYY-MM-DD')
-      const end = range[1].format('YYYY-MM-DD')
-      const resp = await getEmotionReport(coupleId, start, end)
-      if (resp.code !== 0 || !resp.data) {
-        throw new Error(resp.message || '获取分析报告失败')
+  const loadReport = useCallback(
+    async (opts?: { signal?: AbortSignal }) => {
+      if (!coupleId) return
+      const signal = opts?.signal
+      setLoading(true)
+      try {
+        const start = range[0].format('YYYY-MM-DD')
+        const end = range[1].format('YYYY-MM-DD')
+        const resp = await getEmotionReport(coupleId, start, end, signal)
+        if (signal?.aborted) return
+        if (resp.code !== 0 || !resp.data) {
+          throw new Error(resp.message || '获取分析报告失败')
+        }
+        setReport(resp.data)
+      } catch (e) {
+        if (signal?.aborted || (axios.isAxiosError(e) && e.code === 'ERR_CANCELED')) return
+        message.error(e instanceof Error ? e.message : '加载失败')
+      } finally {
+        // 被 AbortController 取消时不要收尾 loading，避免覆盖下一轮请求的状态（StrictMode / 快速切换日期）
+        if (!signal?.aborted) setLoading(false)
       }
-      setReport(resp.data)
-    } catch (e) {
-      message.error(e instanceof Error ? e.message : '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }, [coupleId, range])
+    },
+    [coupleId, range],
+  )
 
   useEffect(() => {
     if (!coupleId) return
-    void loadReport()
+    const ac = new AbortController()
+    void loadReport({ signal: ac.signal })
+    return () => ac.abort()
   }, [coupleId, loadReport])
 
   const overall = useMemo(() => {
