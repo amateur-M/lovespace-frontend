@@ -21,12 +21,13 @@ export default function ScheduledPicker({
         <Typography.Text className="text-sm text-rose-900">定时发送</Typography.Text>
       </div>
       <DatePicker
-        showTime
-        format="YYYY-MM-DD HH:mm"
+        // 勿单独 showSecond：rc-picker 会把时/分列默认成 false
+        showTime={{ showHour: true, showMinute: true, showSecond: true }}
+        format="YYYY-MM-DD HH:mm:ss"
         value={value}
         onChange={onChange}
         disabled={!enabled}
-        className="min-w-[220px]"
+        className="min-w-[260px]"
         placeholder="选择发送时间"
       />
     </div>

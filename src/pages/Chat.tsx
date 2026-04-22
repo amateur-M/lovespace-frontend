@@ -181,7 +181,6 @@ export default function ChatPage() {
                   },
             ),
           )
-          antdMessage.success(scheduledTime ? '定时消息已创建' : '发送成功')
           return
         }
 
@@ -198,7 +197,6 @@ export default function ChatPage() {
             throw new Error(data.message || '创建定时消息失败')
           }
           upsertMessage(data.data)
-          antdMessage.success('定时消息已创建')
         } else {
           const { data } = await http.post<ApiResponse<ChatMessage>>('/api/v1/messages/send', {
             coupleId,
@@ -211,7 +209,6 @@ export default function ChatPage() {
           }
           upsertMessage(data.data)
           setTimeout(scrollToBottom, 0)
-          antdMessage.success('发送成功')
         }
       } catch (e) {
         antdMessage.error(e instanceof Error ? e.message : '发送失败')

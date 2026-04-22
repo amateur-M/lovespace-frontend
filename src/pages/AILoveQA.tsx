@@ -292,7 +292,7 @@ export default function AILoveQAPage() {
         ref={composerRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="向恋爱助手提问，例如：吵架后怎么和好比较快？"
+        placeholder="向恋爱小助手提问，例如：吵架后怎么和好比较快？"
         autoSize={opts.large ? { minRows: 2, maxRows: 5 } : { minRows: 1, maxRows: 6 }}
         maxLength={4000}
         disabled={sending}
@@ -396,10 +396,10 @@ export default function AILoveQAPage() {
                 <HeartOutlined className="text-3xl" />
               </div>
               <Title level={3} className="!mb-2 !text-xl !font-semibold !text-[#831843] sm:!text-2xl">
-                你好，我是恋爱助手
+                你好，我是恋爱小助手
               </Title>
               <Text className="max-w-md text-[15px] leading-relaxed text-[#831843]/75">
-                结合你们的知识库与多轮对话，一起回答情感与相处问题。左侧可查看最近对话；也可随时补充专属片段入库。
+                一起回答找到答案。
               </Text>
             </div>
             <div className="w-full max-w-2xl">{composer({ large: true })}</div>
