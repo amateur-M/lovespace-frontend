@@ -47,6 +47,14 @@ export type LoveQaIngestBody = {
   metadata?: Record<string, unknown>
 }
 
+export type RetrievedChunk = {
+  id: string
+  textPreview: string
+  score?: number
+  source?: string
+  metadata?: Record<string, unknown>
+}
+
 /** 单轮 / 多轮恋爱问答（非流式；RAG + Redis 记忆；服务端再落 MySQL） */
 export async function postLoveQaChat(body: LoveQaChatBody) {
   const { data } = await http.post<ApiResponse<LoveQaChatResponseData>>('/api/v1/ai/love-qa/chat', body, {
@@ -57,6 +65,7 @@ export async function postLoveQaChat(body: LoveQaChatBody) {
 
 export type LoveQaChatStreamHandlers = {
   onMeta: (conversationId: string) => void
+  onRetrieved?: (chunks: RetrievedChunk[]) => void
   onDelta: (chunk: string) => void
   onDone: (payload: { reply: string; conversationId: string }) => void
   onError: (code: number, message: string) => void
@@ -143,13 +152,18 @@ export async function postLoveQaChatStream(
     carry += decoder.decode(value, { stream: true })
     const { blocks, rest } = splitSseBlocks(carry)
     carry = rest
-    for (const block of blocks) {
+      for (const block of blocks) {
       const ev = parseSseBlock(block)
       if (!ev) continue
       try {
         if (ev.event === 'meta') {
           const o = JSON.parse(ev.data) as { conversationId?: string }
           if (o.conversationId) handlers.onMeta(o.conversationId)
+        } else if (ev.event === 'retrieved') {
+          const o = JSON.parse(ev.data) as { chunks?: RetrievedChunk[] }
+          if (o.chunks && handlers.onRetrieved) {
+            handlers.onRetrieved(o.chunks)
+          }
         } else if (ev.event === 'delta') {
           const o = JSON.parse(ev.data) as { t?: string }
           if (o.t) handlers.onDelta(o.t)

@@ -18,6 +18,7 @@ import {
   postLoveQaIngest,
   type LoveQaConversationSummary,
   type LoveQaMessageLine,
+  type RetrievedChunk,
 } from '../services/loveQa'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
@@ -28,6 +29,7 @@ type UiMessage = {
   key: string
   role: 'user' | 'assistant'
   content: string
+  retrievedChunks?: RetrievedChunk[]
 }
 
 function newKey() {
@@ -159,6 +161,12 @@ export default function AILoveQAPage() {
         },
         {
           onMeta: (cid) => setConversationId(cid),
+          onRetrieved: (chunks) => {
+            // 将检索到的引用关联到当前 assistant 消息
+            setMessages((prev) =>
+              prev.map((m) => (m.key === assistantKey ? { ...m, retrievedChunks: chunks } : m)),
+            )
+          },
           onDelta: (chunk) => {
             setMessages((prev) =>
               prev.map((m) => (m.key === assistantKey ? { ...m, content: m.content + chunk } : m)),
@@ -427,6 +435,17 @@ export default function AILoveQAPage() {
                           : 'border border-rose-200/80 bg-[#FFFBFC] text-[#431407]',
                       ].join(' ')}
                     >
+                      {/* 检索引用展示（仅 assistant 消息） */}
+                      {m.role === 'assistant' && m.retrievedChunks && m.retrievedChunks.length > 0 && (
+                        <div className="mb-2 border-b border-rose-100 pb-2">
+                          <Text className="text-[11px] text-[#831843]/60">
+                            📚 参考了 {m.retrievedChunks.length} 条知识
+                            {m.retrievedChunks.some(c => c.source) && (
+                              <>：{[...new Set(m.retrievedChunks.map(c => c.source).filter(Boolean))].slice(0, 3).join('、')}</>
+                            )}
+                          </Text>
+                        </div>
+                      )}
                       {m.content}
                     </div>
                   </div>
