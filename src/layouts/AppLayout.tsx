@@ -8,10 +8,11 @@ import {
   HomeOutlined,
   LineChartOutlined,
   MessageOutlined,
+  MoreOutlined,
   PictureOutlined,
 } from '@ant-design/icons'
 import { Avatar, Badge, Dropdown, Layout, Spin, Typography, message } from 'antd'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useInboxStore } from '../stores/inboxStore'
@@ -34,7 +35,13 @@ const authedNavItems: NavItem[] = [
 
 const guestNavItems: NavItem[] = [{ to: '/', label: '首页', icon: <HomeOutlined aria-hidden /> }]
 
-function NavPill({ item }: { item: NavItem }) {
+function NavPill({
+  item,
+  className,
+}: {
+  item: NavItem
+  className?: string
+}) {
   return (
     <NavLink
       to={item.to}
@@ -46,12 +53,35 @@ function NavPill({ item }: { item: NavItem }) {
           isActive
             ? 'bg-rose-100/95 text-rose-950 shadow-sm ring-1 ring-rose-200/80'
             : 'text-stone-600 hover:bg-rose-50/90 hover:text-rose-900',
+          className,
         ].join(' ')
       }
     >
       <span className="flex shrink-0 text-[15px] text-rose-600 [&_.anticon]:align-[-0.125em]">{item.icon}</span>
       <span className="hidden min-[400px]:inline">{item.label}</span>
     </NavLink>
+  )
+}
+
+function MoreNavPill({ items }: { items: NavItem[] }) {
+  const navigate = useNavigate()
+  const menuItems = items.map((item) => ({
+    key: item.to,
+    icon: <span className="text-rose-600">{item.icon}</span>,
+    label: item.label,
+    onClick: () => navigate(item.to),
+  }))
+
+  return (
+    <Dropdown menu={{ items: menuItems }} placement="bottom">
+      <button
+        type="button"
+        className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-sm font-medium text-stone-600 transition-colors duration-200 hover:bg-rose-50/90 hover:text-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 sm:px-3"
+      >
+        <MoreOutlined className="text-[15px] text-rose-600" />
+        <span className="hidden min-[400px]:inline">更多</span>
+      </button>
+    </Dropdown>
   )
 }
 
@@ -67,6 +97,35 @@ export default function AppLayout() {
   const refreshPendingCount = useInboxStore((s) => s.refreshPendingCount)
 
   const navItems = isAuthed ? authedNavItems : guestNavItems
+
+  // 响应式断点：根据视口宽度决定显示多少菜单项
+  const [visibleCount, setVisibleCount] = useState(navItems.length)
+
+  useEffect(() => {
+    const calcVisible = () => {
+      const vw = window.innerWidth
+      // 断点策略：根据视口宽度决定显示菜单数量
+      // < 640px: 只显示图标或收起
+      // 640-768px: 显示约4-5项
+      // 768-1024px: 显示约6-7项
+      // >= 1024px: 显示全部
+      let count: number
+      if (vw >= 1280) count = navItems.length
+      else if (vw >= 1024) count = Math.min(8, navItems.length)
+      else if (vw >= 900) count = Math.min(6, navItems.length)
+      else if (vw >= 768) count = Math.min(5, navItems.length)
+      else if (vw >= 640) count = Math.min(4, navItems.length)
+      else count = Math.min(3, navItems.length)
+      setVisibleCount(Math.max(2, count))
+    }
+
+    calcVisible()
+    window.addEventListener('resize', calcVisible)
+    return () => window.removeEventListener('resize', calcVisible)
+  }, [navItems.length])
+
+  const visibleItems = navItems.slice(0, visibleCount)
+  const overflowItems = navItems.slice(visibleCount)
 
   useEffect(() => {
     void hydrate()
@@ -156,12 +215,13 @@ export default function AppLayout() {
             </Link>
 
             <nav
-              className="ls-nav-scroll flex min-w-0 flex-1 items-center justify-end gap-0.5 sm:justify-center sm:gap-1"
+              className="flex min-w-0 flex-1 items-center justify-end gap-0.5 overflow-hidden sm:justify-center sm:gap-1"
               aria-label="主导航"
             >
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <NavPill key={item.to} item={item} />
               ))}
+              {overflowItems.length > 0 && <MoreNavPill items={overflowItems} />}
             </nav>
 
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
