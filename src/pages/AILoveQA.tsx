@@ -7,7 +7,8 @@ import {
   SendOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
-import { Button, Form, Input, Modal, Spin, Typography, message } from 'antd'
+import { Button, Form, Input, Modal, Spin, Tabs, Typography, Upload, message } from 'antd'
+import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
@@ -16,6 +17,8 @@ import {
   getLoveQaMessages,
   postLoveQaChatStream,
   postLoveQaIngest,
+  postLoveQaIngestFile,
+  postLoveQaIngestUrl,
   type LoveQaConversationSummary,
   type LoveQaMessageLine,
   type RetrievedChunk,
@@ -36,6 +39,39 @@ function newKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+/**
+ * 将 assistant 内容中的 【1】 【2】 等引用标记渲染为可点击的高亮链接。
+ * 点击后滚动到来源卡片区域并短暂高亮。
+ */
+function renderMessageWithCitations(
+  content: string,
+  retrievedChunks?: RetrievedChunk[],
+  onHighlightSource?: (index: number) => void
+) {
+  if (!content) return content
+
+  // 匹配 【数字】 或 [数字]
+  const parts = content.split(/([【\[]\d+[】\]])/g)
+
+  return parts.map((part, idx) => {
+    const match = part.match(/[【\[](\d+)[】\]]/)
+    if (match) {
+      const num = parseInt(match[1], 10)
+      return (
+        <span
+          key={idx}
+          className="cursor-pointer rounded bg-rose-100 px-1 text-rose-700 hover:bg-rose-200 active:bg-rose-300"
+          onClick={() => onHighlightSource?.(num - 1)}
+          title={`查看来源 #${num}`}
+        >
+          {part}
+        </span>
+      )
+    }
+    return part
+  })
+}
+
 export default function AILoveQAPage() {
   const isAuthed = useAuthStore((s) => s.isAuthed)
   const fetchCoupleInfo = useCoupleStore((s) => s.fetchCoupleInfo)
@@ -51,8 +87,11 @@ export default function AILoveQAPage() {
   const [conversations, setConversations] = useState<LoveQaConversationSummary[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [ingestOpen, setIngestOpen] = useState(false)
+  const [ingestMode, setIngestMode] = useState<'text' | 'file' | 'url'>('text')
   const [ingestSubmitting, setIngestSubmitting] = useState(false)
-  const [form] = Form.useForm<{ title?: string; text: string }>()
+  const [ingestFile, setIngestFile] = useState<UploadFile | null>(null)
+  const [form] = Form.useForm<{ title?: string; text?: string; sourceUrl?: string; category?: string }>()
+  const [highlightedSourceIdx, setHighlightedSourceIdx] = useState<number | null>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const prevConversationIdRef = useRef<string | null>(null)
@@ -195,31 +234,61 @@ export default function AILoveQAPage() {
   }, [input, sending, conversationId, coupleId, loadConversations])
 
   const onIngest = useCallback(
-    async (values: { title?: string; text: string }) => {
-      const text = values.text?.trim()
-      if (!text) {
-        message.warning('请填写要入库的正文')
-        return
-      }
+    async (values: { title?: string; text?: string; sourceUrl?: string; category?: string }) => {
       setIngestSubmitting(true)
       try {
-        const resp = await postLoveQaIngest({
-          text,
-          title: values.title?.trim() || undefined,
-        })
-        if (resp.code !== 0) {
-          throw new Error(resp.message || '入库失败')
+        if (ingestMode === 'text') {
+          const text = values.text?.trim()
+          if (!text) {
+            message.warning('请填写要入库的正文')
+            return
+          }
+          const resp = await postLoveQaIngest({
+            text,
+            title: values.title?.trim() || undefined,
+            category: values.category?.trim() || undefined,
+            coupleId,
+          })
+          if (resp.code !== 0) throw new Error(resp.message || '入库失败')
+        } else if (ingestMode === 'file') {
+          if (!ingestFile) {
+            message.warning('请选择要上传的文件')
+            return
+          }
+          const formData = new FormData()
+          formData.append('file', ingestFile.originFileObj as File)
+          if (values.title) formData.append('title', values.title)
+          if (values.category) formData.append('category', values.category)
+          if (coupleId) formData.append('coupleId', coupleId)
+          const resp = await postLoveQaIngestFile(formData)
+          if (resp.code !== 0) throw new Error(resp.message || '文件入库失败')
+        } else if (ingestMode === 'url') {
+          const url = values.sourceUrl?.trim()
+          if (!url) {
+            message.warning('请输入有效的 URL')
+            return
+          }
+          const resp = await postLoveQaIngestUrl({
+            sourceUrl: url,
+            title: values.title?.trim() || undefined,
+            category: values.category?.trim() || undefined,
+            coupleId,
+          })
+          if (resp.code !== 0) throw new Error(resp.message || 'URL 入库失败')
         }
+
         message.success('已提交知识库（分片入库可能需要数秒）')
         form.resetFields()
+        setIngestFile(null)
         setIngestOpen(false)
+        setIngestMode('text')
       } catch (e) {
         message.error(e instanceof Error ? e.message : '入库失败')
       } finally {
         setIngestSubmitting(false)
       }
     },
-    [form],
+    [form, ingestMode, ingestFile, coupleId],
   )
 
   const sidebarBody = useMemo(
@@ -446,7 +515,17 @@ export default function AILoveQAPage() {
                           </Text>
                         </div>
                       )}
-                      {m.content}
+                      {m.role === 'assistant'
+                        ? renderMessageWithCitations(m.content, m.retrievedChunks, (idx) => {
+                            setHighlightedSourceIdx(idx)
+                            // 滚动到来源卡片区域（简单实现）
+                            setTimeout(() => {
+                              const sourceEl = document.getElementById(`source-${idx}`)
+                              sourceEl?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                              setTimeout(() => setHighlightedSourceIdx(null), 1800)
+                            }, 80)
+                          })
+                        : m.content}
                     </div>
                   </div>
                 ))}
@@ -475,38 +554,106 @@ export default function AILoveQAPage() {
       <Modal
         title={<span className="text-[#831843]">补充知识库</span>}
         open={ingestOpen}
-        onCancel={() => !ingestSubmitting && setIngestOpen(false)}
+        onCancel={() => {
+          if (!ingestSubmitting) {
+            setIngestOpen(false)
+            setIngestMode('text')
+            setIngestFile(null)
+            form.resetFields()
+          }
+        }}
         footer={null}
         destroyOnClose
-        width={560}
+        width={620}
       >
-        <Form form={form} layout="vertical" onFinish={onIngest} className="pt-1">
-          <Form.Item label="标题（可选）" name="title">
-            <Input placeholder="例如：我们吵架后的沟通约定" maxLength={120} />
-          </Form.Item>
-          <Form.Item label="正文" name="text" rules={[{ required: true, message: '请填写正文' }]}>
-            <Input.TextArea
-              rows={8}
-              placeholder="粘贴文章片段、笔记或约定事项，将分片写入向量库供问答引用。"
-              maxLength={50_000}
-              showCount
-            />
-          </Form.Item>
-          <Form.Item className="!mb-0 flex justify-end gap-2">
-            <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
-              取消
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={ingestSubmitting}
-              icon={<UploadOutlined aria-hidden />}
-              className="!border-[#DB2777] !bg-[#DB2777] hover:!border-[#be185d] hover:!bg-[#be185d]"
-            >
-              提交入库
-            </Button>
-          </Form.Item>
-        </Form>
+        <Tabs
+          activeKey={ingestMode}
+          onChange={(key) => {
+            setIngestMode(key as any)
+            setIngestFile(null)
+            form.resetFields(['text', 'sourceUrl'])
+          }}
+          className="pt-1"
+        >
+          <Tabs.TabPane tab="粘贴文本" key="text">
+            <Form form={form} layout="vertical" onFinish={onIngest}>
+              <Form.Item label="标题（可选）" name="title">
+                <Input placeholder="例如：我们吵架后的沟通约定" maxLength={120} />
+              </Form.Item>
+              <Form.Item label="分类（可选）" name="category">
+                <Input placeholder="沟通 / 冲突 / 浪漫 等" />
+              </Form.Item>
+              <Form.Item label="正文" name="text" rules={[{ required: true, message: '请填写正文' }]}>
+                <Input.TextArea
+                  rows={8}
+                  placeholder="粘贴文章片段、笔记或约定事项，将分片写入向量库供问答引用。"
+                  maxLength={50_000}
+                  showCount
+                />
+              </Form.Item>
+              <Form.Item className="!mb-0 flex justify-end gap-2">
+                <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
+                  取消
+                </Button>
+                <Button type="primary" htmlType="submit" loading={ingestSubmitting} icon={<UploadOutlined />}>
+                  提交入库
+                </Button>
+              </Form.Item>
+            </Form>
+          </Tabs.TabPane>
+
+          <Tabs.TabPane tab="上传文件" key="file">
+            <Form form={form} layout="vertical" onFinish={onIngest}>
+              <Form.Item label="标题（可选）" name="title">
+                <Input placeholder="文件主题" />
+              </Form.Item>
+              <Form.Item label="分类（可选）" name="category">
+                <Input placeholder="沟通 / 冲突 / 浪漫 等" />
+              </Form.Item>
+              <Form.Item label="选择文件（.txt / .md）" required>
+                <Upload
+                  beforeUpload={() => false}
+                  maxCount={1}
+                  fileList={ingestFile ? [ingestFile] : []}
+                  onChange={({ fileList }) => setIngestFile(fileList[0] || null)}
+                  accept=".txt,.md,.markdown"
+                >
+                  <Button icon={<UploadOutlined />}>选择文本文件</Button>
+                </Upload>
+              </Form.Item>
+              <Form.Item className="!mb-0 flex justify-end gap-2">
+                <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
+                  取消
+                </Button>
+                <Button type="primary" htmlType="submit" loading={ingestSubmitting} icon={<UploadOutlined />}>
+                  上传并入库
+                </Button>
+              </Form.Item>
+            </Form>
+          </Tabs.TabPane>
+
+          <Tabs.TabPane tab="从 URL 导入" key="url">
+            <Form form={form} layout="vertical" onFinish={onIngest}>
+              <Form.Item label="网页 URL" name="sourceUrl" rules={[{ required: true, message: '请输入 URL' }]}>
+                <Input placeholder="https://example.com/love-article" />
+              </Form.Item>
+              <Form.Item label="标题（可选）" name="title">
+                <Input placeholder="文章标题" />
+              </Form.Item>
+              <Form.Item label="分类（可选）" name="category">
+                <Input placeholder="沟通 / 冲突 / 浪漫 等" />
+              </Form.Item>
+              <Form.Item className="!mb-0 flex justify-end gap-2">
+                <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
+                  取消
+                </Button>
+                <Button type="primary" htmlType="submit" loading={ingestSubmitting} icon={<UploadOutlined />}>
+                  抓取并入库
+                </Button>
+              </Form.Item>
+            </Form>
+          </Tabs.TabPane>
+        </Tabs>
       </Modal>
     </div>
   )

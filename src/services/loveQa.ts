@@ -44,7 +44,32 @@ export type LoveQaMessagesResponse = {
 export type LoveQaIngestBody = {
   text: string
   title?: string
+  sourceUrl?: string
+  category?: string
+  coupleId?: string
   metadata?: Record<string, unknown>
+}
+
+/** 文件上传入库（Multipart） */
+export async function postLoveQaIngestFile(formData: FormData) {
+  const { data } = await http.post<ApiResponse<null>>('/api/v1/ai/love-qa/ingest/file', formData, {
+    timeout: 120_000,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+/** URL 抓取入库 */
+export async function postLoveQaIngestUrl(body: {
+  sourceUrl: string
+  title?: string
+  category?: string
+  coupleId?: string
+}) {
+  const { data } = await http.post<ApiResponse<null>>('/api/v1/ai/love-qa/ingest/url', body, {
+    timeout: 60_000,
+  })
+  return data
 }
 
 export type RetrievedChunk = {
