@@ -32,7 +32,7 @@ function memorialRingSlots(count: number): RingSlot[] {
       slots.push({
         left: 50 + r * Math.cos(angle),
         top: 50 + r * Math.sin(angle),
-        rot: -11 + (i * 19) % 23,
+        rot: -11 + ((i * 19) % 23),
         z: 6 + (i % 7),
         scale: 0.9 + (i % 4) * 0.028,
       })
@@ -47,7 +47,7 @@ function memorialRingSlots(count: number): RingSlot[] {
     slots.push({
       left: 50 + r * Math.cos(angle),
       top: 50 + r * Math.sin(angle),
-      rot: -10 + (i * 13) % 21,
+      rot: -10 + ((i * 13) % 21),
       z: 4 + (i % 6),
       scale: 0.86 + (i % 4) * 0.022,
     })
@@ -59,7 +59,7 @@ function memorialRingSlots(count: number): RingSlot[] {
     slots.push({
       left: 50 + r * Math.cos(angle),
       top: 50 + r * Math.sin(angle),
-      rot: 8 - (idx * 11) % 20,
+      rot: 8 - ((idx * 11) % 20),
       z: 8 + (j % 7),
       scale: 0.92 + (j % 3) * 0.024,
     })
@@ -75,13 +75,8 @@ function HeartGlyph({ className }: { className?: string }) {
   )
 }
 
-function PlaceholderPolaroid({
-  slot,
-}: {
-  slot: RingSlot
-}) {
-  const g =
-    'from-rose-100/90 via-pink-50 to-amber-50/90'
+function PlaceholderPolaroid({ slot }: { slot: RingSlot }) {
+  const g = 'from-rose-100/90 via-pink-50 to-amber-50/90'
   return (
     <div
       className="memorial-polaroid pointer-events-none absolute flex w-[min(30vw,7.75rem)] flex-col flex-shrink-0 sm:w-[min(28vw,8.75rem)]"
@@ -170,9 +165,7 @@ export default function MemorialPhotoWall({ coupleId }: Props) {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 className="memorial-display text-xl text-stone-900 sm:text-2xl">我们的照片墙</h2>
-          <p className="mt-1 text-sm text-stone-600">
-            回忆轻轻围成一圈。
-          </p>
+          <p className="mt-1 text-sm text-stone-600">回忆轻轻围成一圈。</p>
         </div>
         <Link to="/album" className="ls-link cursor-pointer text-sm">
           去相册上传
@@ -193,13 +186,9 @@ export default function MemorialPhotoWall({ coupleId }: Props) {
           <p className="memorial-accent mt-1 text-lg text-rose-700/50 sm:text-xl">Our moments</p>
         </div>
 
-        <div
-          className="relative z-[2] mx-auto min-h-[min(88vw,26rem)] w-full max-w-3xl sm:min-h-[28rem] md:min-h-[30rem]"
-        >
+        <div className="relative z-[2] mx-auto min-h-[min(88vw,26rem)] w-full max-w-3xl sm:min-h-[28rem] md:min-h-[30rem]">
           {showPlaceholders
-            ? slots.map((slot, index) => (
-                <PlaceholderPolaroid key={`ph-${index}`} slot={slot} />
-              ))
+            ? slots.map((slot, index) => <PlaceholderPolaroid key={`ph-${index}`} slot={slot} />)
             : photos.map((ph, index) => {
                 const slot = slots[index] ?? slots[slots.length - 1]
                 const thumbSrc = resolveMediaUrl(ph.thumbnailUrl || ph.imageUrl)

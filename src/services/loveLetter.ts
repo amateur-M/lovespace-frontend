@@ -17,8 +17,12 @@ export type LoveLetterResponseData = {
 }
 
 export async function generateLoveLetter(body: LoveLetterGenerateBody) {
-  const { data } = await http.post<ApiResponse<LoveLetterResponseData>>('/api/v1/ai/love-letter', body, {
-    timeout: 120_000,
-  })
+  const { data } = await http.post<ApiResponse<LoveLetterResponseData>>(
+    '/api/v1/ai/love-letter',
+    body,
+    {
+      timeout: 120_000,
+    },
+  )
   return data
 }

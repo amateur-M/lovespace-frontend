@@ -197,7 +197,9 @@ export default function Timeline() {
           <div className="mb-3 flex h-[calc(100dvh-11.5rem)] min-h-[280px] flex-col gap-3 sm:h-[calc(100dvh-12rem)]">
             <div className="shrink-0 rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2.5 shadow-sm backdrop-blur-sm sm:px-4">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-                <Typography.Text className="shrink-0 text-sm font-medium text-rose-900/85">记录日期</Typography.Text>
+                <Typography.Text className="shrink-0 text-sm font-medium text-rose-900/85">
+                  记录日期
+                </Typography.Text>
                 <DatePicker.RangePicker
                   value={dateRange}
                   onChange={(v) => setDateRange(v)}
@@ -220,7 +222,11 @@ export default function Timeline() {
                 >
                   全部时间
                 </Button>
-                <Button icon={<ReloadOutlined />} onClick={() => refresh().catch(() => undefined)} loading={loading}>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={() => refresh().catch(() => undefined)}
+                  loading={loading}
+                >
                   刷新
                 </Button>
               </div>
@@ -236,7 +242,10 @@ export default function Timeline() {
                 <Space direction="vertical" size={16} className="w-full">
                   {grouped.map(({ month, items }) => (
                     <div key={month}>
-                      <Divider orientation="left" className="!mt-0 !border-rose-200 !text-rose-800/65">
+                      <Divider
+                        orientation="left"
+                        className="!mt-0 !border-rose-200 !text-rose-800/65"
+                      >
                         {formatMonthTitle(month)}
                       </Divider>
                       <Space direction="vertical" size={12} className="w-full">
@@ -271,7 +280,12 @@ export default function Timeline() {
             ) : null}
           </div>
 
-          <FloatButton icon={<PlusOutlined />} type="primary" tooltip="记录今天" onClick={openCreate} />
+          <FloatButton
+            icon={<PlusOutlined />}
+            type="primary"
+            tooltip="记录今天"
+            onClick={openCreate}
+          />
           <Modal
             title={editingRecord ? '编辑记录' : '记录今天'}
             open={formOpen}

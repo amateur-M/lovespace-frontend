@@ -98,7 +98,7 @@ export default function PlanPage() {
   }, [plans])
 
   const selectedPlan = useMemo(
-    () => (selectedId ? plans.find((p) => p.id === selectedId) ?? null : null),
+    () => (selectedId ? (plans.find((p) => p.id === selectedId) ?? null) : null),
     [plans, selectedId],
   )
 
@@ -202,7 +202,12 @@ export default function PlanPage() {
     setTaskModalMode('create')
     setEditingTask(null)
     taskModalForm.resetFields()
-    taskModalForm.setFieldsValue({ title: '', assigneeId: undefined, dueDate: null, completed: false })
+    taskModalForm.setFieldsValue({
+      title: '',
+      assigneeId: undefined,
+      dueDate: null,
+      completed: false,
+    })
     setTaskModalOpen(true)
   }
 
@@ -311,7 +316,9 @@ export default function PlanPage() {
           <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto lg:pr-1">
             <div className="rounded-2xl border border-rose-200/60 bg-white/70 p-3 shadow-[0_8px_30px_-12px_rgba(190,24,93,0.12)] backdrop-blur-md">
               <div className="px-2 pb-2 pt-1">
-                <div className="text-[15px] font-semibold uppercase tracking-[0.12em] text-rose-800/50">计划</div>
+                <div className="text-[15px] font-semibold uppercase tracking-[0.12em] text-rose-800/50">
+                  计划
+                </div>
               </div>
               {plansLoading && !plans.length ? (
                 <div className="flex justify-center py-12">
@@ -345,7 +352,9 @@ export default function PlanPage() {
             {!selectedPlan ? (
               <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-rose-200/80 bg-gradient-to-b from-white/90 to-rose-50/40 px-6 py-16 text-center">
                 <p className="text-base font-medium text-rose-900/80">在左侧选择一个计划</p>
-                <p className="mt-2 max-w-sm text-sm text-rose-800/55">列表仅展示摘要；详情、预算与任务将在此区域展开。</p>
+                <p className="mt-2 max-w-sm text-sm text-rose-800/55">
+                  列表仅展示摘要；详情、预算与任务将在此区域展开。
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -366,7 +375,9 @@ export default function PlanPage() {
                 <div className="rounded-2xl border border-rose-200/50 bg-white/85 p-5 shadow-sm backdrop-blur-sm">
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-800/45">执行</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-800/45">
+                        执行
+                      </div>
                       <Typography.Title level={5} className="!mb-0 !mt-0.5 !text-rose-950">
                         任务清单
                       </Typography.Title>
@@ -395,7 +406,9 @@ export default function PlanPage() {
                       />
                     ))}
                     {!selectedTasks.length ? (
-                      <p className="text-sm text-rose-800/60">暂无子任务，可点击「添加任务」创建。</p>
+                      <p className="text-sm text-rose-800/60">
+                        暂无子任务，可点击「添加任务」创建。
+                      </p>
                     ) : null}
                   </div>
                 </div>

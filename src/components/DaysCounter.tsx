@@ -16,7 +16,9 @@ export default function DaysCounter({ days, className }: DaysCounterProps) {
       className={`!m-0 text-center !font-medium !text-rose-900/85 ${className ?? ''}`}
     >
       我们已经在一起第{' '}
-      <span className="text-3xl font-semibold tabular-nums tracking-tight text-rose-600">{days}</span>{' '}
+      <span className="text-3xl font-semibold tabular-nums tracking-tight text-rose-600">
+        {days}
+      </span>{' '}
       天
     </Typography.Title>
   )

@@ -267,7 +267,11 @@ export default function AlbumPage() {
             <Spin />
           </div>
         ) : (
-          <PhotoGrid photos={photos} onPhotoClick={openViewer} onToggleFavorite={handleToggleFavorite} />
+          <PhotoGrid
+            photos={photos}
+            onPhotoClick={openViewer}
+            onToggleFavorite={handleToggleFavorite}
+          />
         )}
 
         {photoTotal > 0 ? (
@@ -317,9 +321,7 @@ export default function AlbumPage() {
       ) : albums.length === 0 ? (
         <div className="ls-surface py-16">
           <Empty
-            description={
-              <span className="text-rose-800/70">还没有相册，点击右下角加号创建</span>
-            }
+            description={<span className="text-rose-800/70">还没有相册，点击右下角加号创建</span>}
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         </div>

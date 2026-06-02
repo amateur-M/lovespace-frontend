@@ -10,11 +10,7 @@ import MemorialRomanticDecor from '../components/memorial/MemorialRomanticDecor'
 import { deleteMemorial, type MemorialDay } from '../services/memorial'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
-import {
-  formatCountdown,
-  remainingMsFromAnchor,
-  useMemorialStore,
-} from '../stores/memorialStore'
+import { formatCountdown, remainingMsFromAnchor, useMemorialStore } from '../stores/memorialStore'
 
 const { Text, Paragraph } = Typography
 
@@ -122,14 +118,9 @@ export default function MemorialPage() {
     return () => window.clearInterval(id)
   }, [])
 
-  const remainingMs = useMemo(
-    () => remainingMsFromAnchor(countdownAnchor),
-    [countdownAnchor, tick],
-  )
-  const cd =
-    remainingMs != null && nextPayload?.memorial
-      ? formatCountdown(remainingMs)
-      : null
+  void tick
+  const remainingMs = remainingMsFromAnchor(countdownAnchor)
+  const cd = remainingMs != null && nextPayload?.memorial ? formatCountdown(remainingMs) : null
 
   const blessingText = useMemo(() => {
     const desc = nextPayload?.memorial?.description?.trim()
@@ -209,7 +200,10 @@ export default function MemorialPage() {
           {/* 恋爱倒计时与祝福语（位于照片墙上方） */}
           <section className="rounded-2xl border border-rose-200/85 bg-gradient-to-b from-white/95 to-rose-50/90 p-6 shadow-md sm:p-8">
             <div className="text-center">
-              <Text type="secondary" className="text-xs uppercase tracking-[0.2em] text-rose-800/70">
+              <Text
+                type="secondary"
+                className="text-xs uppercase tracking-[0.2em] text-rose-800/70"
+              >
                 下一次心动
               </Text>
               <h2 className="memorial-display mt-2 text-2xl text-stone-900 sm:text-3xl">
@@ -271,54 +265,52 @@ export default function MemorialPage() {
             items={[
               {
                 key: 'manage',
-                label: (
-                  <span className="font-medium text-stone-800">全部纪念日</span>
-                ),
+                label: <span className="font-medium text-stone-800">全部纪念日</span>,
                 children: (
                   <div className="flex flex-col gap-4">
                     <Spin spinning={loadingList}>
                       <List
-                      dataSource={sortedItems}
-                      locale={{ emptyText: '暂无纪念日，点击右下角「+」创建' }}
-                      renderItem={(m) => (
-                        <List.Item
-                          className="!px-0"
-                          actions={[
-                            <Button
-                              key="e"
-                              type="link"
-                              size="small"
-                              className="cursor-pointer"
-                              icon={<EditOutlined />}
-                              onClick={() => openEdit(m)}
-                            >
-                              编辑
-                            </Button>,
-                            <Button
-                              key="d"
-                              type="link"
-                              size="small"
-                              danger
-                              className="cursor-pointer"
-                              icon={<DeleteOutlined />}
-                              onClick={() => onDelete(m)}
-                            >
-                              删除
-                            </Button>,
-                          ]}
-                        >
-                          <List.Item.Meta
-                            title={<span className="text-stone-900">{m.name}</span>}
-                            description={
-                              <span className="text-stone-600">
-                                每年 {dayjs(m.memorialDate).format('M月D日')}
-                                {m.description ? ` · ${m.description}` : ''}
-                              </span>
-                            }
-                          />
-                        </List.Item>
-                      )}
-                    />
+                        dataSource={sortedItems}
+                        locale={{ emptyText: '暂无纪念日，点击右下角「+」创建' }}
+                        renderItem={(m) => (
+                          <List.Item
+                            className="!px-0"
+                            actions={[
+                              <Button
+                                key="e"
+                                type="link"
+                                size="small"
+                                className="cursor-pointer"
+                                icon={<EditOutlined />}
+                                onClick={() => openEdit(m)}
+                              >
+                                编辑
+                              </Button>,
+                              <Button
+                                key="d"
+                                type="link"
+                                size="small"
+                                danger
+                                className="cursor-pointer"
+                                icon={<DeleteOutlined />}
+                                onClick={() => onDelete(m)}
+                              >
+                                删除
+                              </Button>,
+                            ]}
+                          >
+                            <List.Item.Meta
+                              title={<span className="text-stone-900">{m.name}</span>}
+                              description={
+                                <span className="text-stone-600">
+                                  每年 {dayjs(m.memorialDate).format('M月D日')}
+                                  {m.description ? ` · ${m.description}` : ''}
+                                </span>
+                              }
+                            />
+                          </List.Item>
+                        )}
+                      />
                     </Spin>
                   </div>
                 ),

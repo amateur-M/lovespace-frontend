@@ -21,7 +21,13 @@ type PlanListItemProps = {
 /**
  * 侧栏计划行：仅保留识别与快速扫描信息，与详情区不重复堆叠。
  */
-export default function PlanListItem({ plan, selected, onSelect, onEdit, onDelete }: PlanListItemProps) {
+export default function PlanListItem({
+  plan,
+  selected,
+  onSelect,
+  onEdit,
+  onDelete,
+}: PlanListItemProps) {
   const progress = displayPlanProgress(plan)
   const typeLabel = PLAN_TYPE_LABEL[plan.planType] ?? plan.planType
   const hasRange = plan.startDate || plan.endDate
@@ -52,8 +58,12 @@ export default function PlanListItem({ plan, selected, onSelect, onEdit, onDelet
           />
         ) : null}
         <div className="flex items-start justify-between gap-2 pl-0.5">
-          <span className="min-w-0 flex-1 truncate font-medium leading-snug text-rose-950">{plan.title}</span>
-          <span className="shrink-0 tabular-nums text-xs font-semibold text-rose-700/90">{progress}%</span>
+          <span className="min-w-0 flex-1 truncate font-medium leading-snug text-rose-950">
+            {plan.title}
+          </span>
+          <span className="shrink-0 tabular-nums text-xs font-semibold text-rose-700/90">
+            {progress}%
+          </span>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-0.5">
           <Tag className="!m-0 border-rose-200/80 bg-rose-50/90 px-1.5 py-0 text-[11px] leading-tight text-rose-900">

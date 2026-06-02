@@ -2,11 +2,7 @@ import { Form, Input, Modal, DatePicker, message } from 'antd'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
-import {
-  createMemorial,
-  updateMemorial,
-  type MemorialDay,
-} from '../services/memorial'
+import { createMemorial, updateMemorial, type MemorialDay } from '../services/memorial'
 
 export type MemorialFormValues = {
   name: string
@@ -100,19 +96,22 @@ export default function MemorialDayFormModal({
       onOk={() => void handleOk()}
       confirmLoading={submitting}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        className="pt-2"
-      >
+      <Form form={form} layout="vertical" className="pt-2">
         <Form.Item
           name="name"
           label="名称"
-          rules={[{ required: true, message: '请输入名称' }, { max: 200, message: '最多 200 字' }]}
+          rules={[
+            { required: true, message: '请输入名称' },
+            { max: 200, message: '最多 200 字' },
+          ]}
         >
           <Input placeholder="例如：恋爱纪念日" maxLength={200} showCount />
         </Form.Item>
-        <Form.Item name="description" label="描述（可选）" rules={[{ max: 2000, message: '最多 2000 字' }]}>
+        <Form.Item
+          name="description"
+          label="描述（可选）"
+          rules={[{ max: 2000, message: '最多 2000 字' }]}
+        >
           <Input.TextArea rows={3} placeholder="简短备注" maxLength={2000} showCount />
         </Form.Item>
         <Form.Item

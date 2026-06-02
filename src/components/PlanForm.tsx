@@ -170,7 +170,11 @@ export default function PlanForm({
           <Input.TextArea placeholder="可选" rows={3} maxLength={2000} showCount />
         </Form.Item>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Form.Item name="planType" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
+          <Form.Item
+            name="planType"
+            label="类型"
+            rules={[{ required: true, message: '请选择类型' }]}
+          >
             <Select options={PLAN_TYPES} placeholder="类型" />
           </Form.Item>
           <Form.Item name="priority" label="优先级">
@@ -202,7 +206,9 @@ export default function PlanForm({
         <Form.Item name="budgetTotal" label="预算总额">
           <InputNumber min={0} className="w-full max-w-xs" placeholder="可选" addonBefore="¥" />
         </Form.Item>
-        <p className="!mb-0 text-xs text-rose-800/60">已花费由「消费记录」自动汇总，无需在此填写。</p>
+        <p className="!mb-0 text-xs text-rose-800/60">
+          已花费由「消费记录」自动汇总，无需在此填写。
+        </p>
       </Form>
     </Modal>
   )

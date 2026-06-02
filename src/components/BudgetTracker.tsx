@@ -26,7 +26,12 @@ function fmtMoney(n: number) {
   return n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 
-export default function BudgetTracker({ total, spent, breakdown, className = '' }: BudgetTrackerProps) {
+export default function BudgetTracker({
+  total,
+  spent,
+  breakdown,
+  className = '',
+}: BudgetTrackerProps) {
   const t = toNumber(total)
   const s = toNumber(spent)
   if (t === null && s === null) {
@@ -45,8 +50,16 @@ export default function BudgetTracker({ total, spent, breakdown, className = '' 
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 text-xs text-rose-900/80">
         <span className="font-medium">预算</span>
         <span className="tabular-nums text-rose-800/90">
-          ¥{safeSpent.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} / ¥
-          {safeTotal.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+          ¥
+          {safeSpent.toLocaleString('zh-CN', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          })}{' '}
+          / ¥
+          {safeTotal.toLocaleString('zh-CN', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          })}
         </span>
       </div>
       {safeTotal > 0 ? (

@@ -8,6 +8,7 @@ import { listPendingInvites } from '../services/couple'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
 import { useInboxStore } from '../stores/inboxStore'
+import { resolveMediaUrl } from '../utils/mediaUrl'
 
 const { Paragraph, Text } = Typography
 
@@ -80,9 +81,14 @@ export default function Inbox() {
       <section className="ls-page-intro space-y-2">
         <div className="inline-flex items-center gap-2 text-rose-600">
           <InboxOutlined className="text-lg" aria-hidden />
-          <Text className="!m-0 text-xs font-semibold uppercase tracking-wide text-rose-800/70">消息</Text>
+          <Text className="!m-0 text-xs font-semibold uppercase tracking-wide text-rose-800/70">
+            消息
+          </Text>
         </div>
-        <Typography.Title level={2} className="!m-0 !text-2xl !font-semibold !text-stone-900 sm:!text-3xl">
+        <Typography.Title
+          level={2}
+          className="!m-0 !text-2xl !font-semibold !text-stone-900 sm:!text-3xl"
+        >
           待处理邀请
         </Typography.Title>
         <Paragraph className="!mb-0 max-w-xl text-[15px] text-rose-900/75">
@@ -92,11 +98,7 @@ export default function Inbox() {
 
       <Card className="ls-surface !shadow-sm" loading={loading}>
         {!loading && items.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无待处理消息"
-            className="py-6"
-          >
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待处理消息" className="py-6">
             <Link
               to="/couple"
               className="ls-link text-sm font-medium text-rose-700 hover:text-rose-900"
@@ -119,12 +121,18 @@ export default function Inbox() {
               >
                 <List.Item.Meta
                   avatar={
-                    <Avatar size={48} src={inv.inviter.avatarUrl ?? undefined} className="shrink-0">
+                    <Avatar
+                      size={48}
+                      src={resolveMediaUrl(inv.inviter.avatarUrl) || undefined}
+                      className="shrink-0"
+                    >
                       {inv.inviter.username?.slice(0, 1)?.toUpperCase() ?? '?'}
                     </Avatar>
                   }
                   title={
-                    <span className="text-base font-medium text-stone-900">{inv.inviter.username}</span>
+                    <span className="text-base font-medium text-stone-900">
+                      {inv.inviter.username}
+                    </span>
                   }
                   description={
                     <div className="space-y-1">
@@ -133,9 +141,7 @@ export default function Inbox() {
                         <span>邀请你成为情侣</span>
                       </div>
                       <Text type="secondary" className="text-xs">
-                        {inv.invitedAt
-                          ? dayjs(inv.invitedAt).format('YYYY-MM-DD HH:mm')
-                          : '—'}
+                        {inv.invitedAt ? dayjs(inv.invitedAt).format('YYYY-MM-DD HH:mm') : '—'}
                       </Text>
                     </div>
                   }
@@ -160,7 +166,8 @@ export default function Inbox() {
         destroyOnClose
       >
         <Paragraph type="secondary" className="text-sm">
-          与 <strong>{activeInvite?.inviter.username}</strong> 绑定后，即可使用时间轴、相册等功能。可选指定恋爱开始日，留空则默认今天。
+          与 <strong>{activeInvite?.inviter.username}</strong>{' '}
+          绑定后，即可使用时间轴、相册等功能。可选指定恋爱开始日，留空则默认今天。
         </Paragraph>
         <DatePicker
           className="w-full"

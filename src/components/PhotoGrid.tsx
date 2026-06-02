@@ -20,7 +20,9 @@ export default function PhotoGrid({ photos, onPhotoClick, onToggleFavorite }: Ph
   if (photos.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50/80 py-16 text-center">
-        <Typography.Text className="text-rose-800/70">还没有照片，点击「上传照片」添加</Typography.Text>
+        <Typography.Text className="text-rose-800/70">
+          还没有照片，点击「上传照片」添加
+        </Typography.Text>
       </div>
     )
   }

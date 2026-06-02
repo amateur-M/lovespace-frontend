@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import axios from 'axios'
 import EmotionAnalysisCharts from '../components/EmotionAnalysisCharts'
-import { moodLabel } from '../components/MoodTag'
+import { moodLabel } from '../utils/mood'
 import { getEmotionReport, type EmotionAnalysisReport, type OverallMood } from '../services/emotion'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
@@ -192,12 +192,7 @@ export default function EmotionAnalysisPage() {
               className={`space-y-6 transition-opacity duration-200 ${loading ? 'pointer-events-none opacity-60' : ''}`}
             >
               {loading ? (
-                <Alert
-                  type="info"
-                  showIcon
-                  className="!rounded-xl"
-                  message="正在更新分析结果…"
-                />
+                <Alert type="info" showIcon className="!rounded-xl" message="正在更新分析结果…" />
               ) : null}
               <div className="grid gap-4 lg:grid-cols-12 lg:gap-6">
                 {/* 综合分 + 倾向 */}
@@ -273,11 +268,18 @@ export default function EmotionAnalysisPage() {
                 <Title level={4} className="!mb-3 !text-base !font-semibold !text-stone-900">
                   分布与趋势
                 </Title>
-                <EmotionAnalysisCharts distribution={report.emotionDistribution} trend={report.trendData} />
+                <EmotionAnalysisCharts
+                  distribution={report.emotionDistribution}
+                  trend={report.trendData}
+                />
               </div>
 
               {/* 心情占比列表（无障碍：不仅依赖颜色） */}
-              <Card size="small" className="ls-surface !border-rose-200/80" title="心情标签占比（数值）">
+              <Card
+                size="small"
+                className="ls-surface !border-rose-200/80"
+                title="心情标签占比（数值）"
+              >
                 <div className="flex flex-wrap gap-3">
                   {Object.entries(report.emotionDistribution).map(([key, pct]) => (
                     <div
@@ -285,14 +287,21 @@ export default function EmotionAnalysisPage() {
                       className="flex min-w-[140px] flex-1 cursor-default items-center justify-between gap-3 rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-2 transition-colors duration-200 hover:border-rose-200 hover:bg-white"
                     >
                       <span className="text-sm font-medium text-stone-800">{moodLabel(key)}</span>
-                      <span className="tabular-nums text-sm font-semibold text-rose-800">{pct}%</span>
+                      <span className="tabular-nums text-sm font-semibold text-rose-800">
+                        {pct}%
+                      </span>
                     </div>
                   ))}
                 </div>
               </Card>
             </div>
           ) : (
-            <Alert type="warning" message="暂无数据" description="请点击「刷新分析」重试。" showIcon />
+            <Alert
+              type="warning"
+              message="暂无数据"
+              description="请点击「刷新分析」重试。"
+              showIcon
+            />
           )}
         </>
       )}

@@ -1,6 +1,5 @@
 import { Button, Card, Descriptions, Space, Typography } from 'antd'
 import { Link } from 'react-router-dom'
-import EChartsDemo from '../components/EChartsDemo'
 import { useAuthStore } from '../stores/authStore'
 
 export default function HomePage() {
@@ -10,7 +9,10 @@ export default function HomePage() {
   return (
     <Space direction="vertical" size={20} className="w-full">
       <Card className="ls-surface !shadow-sm">
-        <Typography.Title level={3} className="!m-0 !font-semibold !tracking-tight !text-orange-950">
+        <Typography.Title
+          level={3}
+          className="!m-0 !font-semibold !tracking-tight !text-orange-950"
+        >
           首页
         </Typography.Title>
         <Typography.Paragraph className="ls-page-intro !mb-0 !mt-2">
@@ -49,7 +51,6 @@ export default function HomePage() {
           <Typography.Text type="secondary">未登录</Typography.Text>
         )}
       </Card>
-      <EChartsDemo />
     </Space>
   )
 }

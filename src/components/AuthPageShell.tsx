@@ -21,7 +21,10 @@ export default function AuthPageShell({ title, subtitle, children }: AuthPageShe
             LoveSpace
           </Link>
         </div>
-        <Typography.Title level={3} className="!mb-2 !mt-0 text-center !font-semibold !tracking-tight !text-orange-950">
+        <Typography.Title
+          level={3}
+          className="!mb-2 !mt-0 text-center !font-semibold !tracking-tight !text-orange-950"
+        >
           {title}
         </Typography.Title>
         {subtitle ? (

@@ -28,6 +28,13 @@ import { useCoupleStore } from '../stores/coupleStore'
 
 const { Text, Title } = Typography
 
+type IngestMode = 'text' | 'file' | 'url'
+
+type HighlightedSource = {
+  messageKey: string
+  idx: number
+}
+
 type UiMessage = {
   key: string
   role: 'user' | 'assistant'
@@ -43,20 +50,18 @@ function newKey() {
  * 将 assistant 内容中的 【1】 【2】 等引用标记渲染为可点击的高亮链接。
  * 点击后滚动到来源卡片区域并短暂高亮。
  */
-function renderMessageWithCitations(
-  content: string,
-  retrievedChunks?: RetrievedChunk[],
-  onHighlightSource?: (index: number) => void
-) {
+function renderMessageWithCitations(content: string, onHighlightSource?: (index: number) => void) {
   if (!content) return content
 
   // 匹配 【数字】 或 [数字]
-  const parts = content.split(/([【\[]\d+[】\]])/g)
+  const parts = content.split(/(【\d+】|\[\d+\])/g)
 
   return parts.map((part, idx) => {
-    const match = part.match(/[【\[](\d+)[】\]]/)
-    if (match) {
-      const num = parseInt(match[1], 10)
+    const cnMatch = part.match(/^【(\d+)】$/)
+    const enMatch = part.match(/^\[(\d+)\]$/)
+    const numStr = cnMatch?.[1] ?? enMatch?.[1]
+    if (numStr) {
+      const num = parseInt(numStr, 10)
       return (
         <span
           key={idx}
@@ -87,11 +92,16 @@ export default function AILoveQAPage() {
   const [conversations, setConversations] = useState<LoveQaConversationSummary[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [ingestOpen, setIngestOpen] = useState(false)
-  const [ingestMode, setIngestMode] = useState<'text' | 'file' | 'url'>('text')
+  const [ingestMode, setIngestMode] = useState<IngestMode>('text')
   const [ingestSubmitting, setIngestSubmitting] = useState(false)
   const [ingestFile, setIngestFile] = useState<UploadFile | null>(null)
-  const [form] = Form.useForm<{ title?: string; text?: string; sourceUrl?: string; category?: string }>()
-  const [highlightedSourceIdx, setHighlightedSourceIdx] = useState<number | null>(null)
+  const [form] = Form.useForm<{
+    title?: string
+    text?: string
+    sourceUrl?: string
+    category?: string
+  }>()
+  const [highlightedSource, setHighlightedSource] = useState<HighlightedSource | null>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const prevConversationIdRef = useRef<string | null>(null)
@@ -225,7 +235,11 @@ export default function AILoveQAPage() {
     } catch (e) {
       setMessages((prev) => prev.filter((m) => m.key !== userKey && m.key !== assistantKey))
       const errMsg =
-        e instanceof Error && e.name === 'AbortError' ? '请求超时，请稍后再试' : e instanceof Error ? e.message : '发送失败'
+        e instanceof Error && e.name === 'AbortError'
+          ? '请求超时，请稍后再试'
+          : e instanceof Error
+            ? e.message
+            : '发送失败'
       message.error(errMsg)
     } finally {
       window.clearTimeout(timeoutId)
@@ -303,7 +317,9 @@ export default function AILoveQAPage() {
           新建对话
         </Button>
         <div className="mt-3 px-1">
-          <Text className="text-[11px] font-semibold uppercase tracking-wide text-[#831843]/45">最近对话</Text>
+          <Text className="text-[11px] font-semibold uppercase tracking-wide text-[#831843]/45">
+            最近对话
+          </Text>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pr-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
           {listLoading ? (
@@ -311,7 +327,9 @@ export default function AILoveQAPage() {
               <Spin />
             </div>
           ) : conversations.length === 0 ? (
-            <Text className="block px-2 py-4 text-center text-xs text-[#831843]/50">暂无历史，在右侧开始提问吧</Text>
+            <Text className="block px-2 py-4 text-center text-xs text-[#831843]/50">
+              暂无历史，在右侧开始提问吧
+            </Text>
           ) : (
             <ul className="space-y-0.5" aria-label="会话列表">
               {conversations.map((item) => {
@@ -472,7 +490,10 @@ export default function AILoveQAPage() {
               >
                 <HeartOutlined className="text-3xl" />
               </div>
-              <Title level={3} className="!mb-2 !text-xl !font-semibold !text-[#831843] sm:!text-2xl">
+              <Title
+                level={3}
+                className="!mb-2 !text-xl !font-semibold !text-[#831843] sm:!text-2xl"
+              >
                 你好，我是恋爱小助手
               </Title>
               <Text className="max-w-md text-[15px] leading-relaxed text-[#831843]/75">
@@ -505,24 +526,63 @@ export default function AILoveQAPage() {
                       ].join(' ')}
                     >
                       {/* 检索引用展示（仅 assistant 消息） */}
-                      {m.role === 'assistant' && m.retrievedChunks && m.retrievedChunks.length > 0 && (
-                        <div className="mb-2 border-b border-rose-100 pb-2">
-                          <Text className="text-[11px] text-[#831843]/60">
-                            📚 参考了 {m.retrievedChunks.length} 条知识
-                            {m.retrievedChunks.some(c => c.source) && (
-                              <>：{[...new Set(m.retrievedChunks.map(c => c.source).filter(Boolean))].slice(0, 3).join('、')}</>
-                            )}
-                          </Text>
-                        </div>
-                      )}
+                      {m.role === 'assistant' &&
+                        m.retrievedChunks &&
+                        m.retrievedChunks.length > 0 && (
+                          <div className="mb-2 space-y-1.5 border-b border-rose-100 pb-2">
+                            <Text className="text-[11px] text-[#831843]/60">
+                              📚 参考了 {m.retrievedChunks.length} 条知识
+                              {m.retrievedChunks.some((c) => c.source) && (
+                                <>
+                                  ：
+                                  {[
+                                    ...new Set(
+                                      m.retrievedChunks.map((c) => c.source).filter(Boolean),
+                                    ),
+                                  ]
+                                    .slice(0, 3)
+                                    .join('、')}
+                                </>
+                              )}
+                            </Text>
+                            <div className="space-y-1">
+                              {m.retrievedChunks.map((chunk, idx) => {
+                                const highlighted =
+                                  highlightedSource?.messageKey === m.key &&
+                                  highlightedSource.idx === idx
+                                return (
+                                  <div
+                                    key={`${chunk.id}-${idx}`}
+                                    id={`source-${m.key}-${idx}`}
+                                    className={[
+                                      'rounded-lg border px-2 py-1.5 text-[11px] leading-snug transition-colors duration-300',
+                                      highlighted
+                                        ? 'border-rose-400 bg-rose-100/90 ring-1 ring-rose-300'
+                                        : 'border-rose-100/80 bg-white/80 text-[#831843]/75',
+                                    ].join(' ')}
+                                  >
+                                    <span className="font-medium text-rose-700">[{idx + 1}]</span>
+                                    {chunk.source ? (
+                                      <span className="ml-1 text-[#831843]/55">{chunk.source}</span>
+                                    ) : null}
+                                    {chunk.textPreview ? (
+                                      <p className="mt-0.5 line-clamp-2 text-[#431407]/80">
+                                        {chunk.textPreview}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       {m.role === 'assistant'
-                        ? renderMessageWithCitations(m.content, m.retrievedChunks, (idx) => {
-                            setHighlightedSourceIdx(idx)
-                            // 滚动到来源卡片区域（简单实现）
-                            setTimeout(() => {
-                              const sourceEl = document.getElementById(`source-${idx}`)
+                        ? renderMessageWithCitations(m.content, (idx) => {
+                            setHighlightedSource({ messageKey: m.key, idx })
+                            window.setTimeout(() => {
+                              const sourceEl = document.getElementById(`source-${m.key}-${idx}`)
                               sourceEl?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                              setTimeout(() => setHighlightedSourceIdx(null), 1800)
+                              window.setTimeout(() => setHighlightedSource(null), 1800)
                             }, 80)
                           })
                         : m.content}
@@ -569,7 +629,9 @@ export default function AILoveQAPage() {
         <Tabs
           activeKey={ingestMode}
           onChange={(key) => {
-            setIngestMode(key as any)
+            if (key === 'text' || key === 'file' || key === 'url') {
+              setIngestMode(key)
+            }
             setIngestFile(null)
             form.resetFields(['text', 'sourceUrl'])
           }}
@@ -583,7 +645,11 @@ export default function AILoveQAPage() {
               <Form.Item label="分类（可选）" name="category">
                 <Input placeholder="沟通 / 冲突 / 浪漫 等" />
               </Form.Item>
-              <Form.Item label="正文" name="text" rules={[{ required: true, message: '请填写正文' }]}>
+              <Form.Item
+                label="正文"
+                name="text"
+                rules={[{ required: true, message: '请填写正文' }]}
+              >
                 <Input.TextArea
                   rows={8}
                   placeholder="粘贴文章片段、笔记或约定事项，将分片写入向量库供问答引用。"
@@ -595,7 +661,12 @@ export default function AILoveQAPage() {
                 <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
                   取消
                 </Button>
-                <Button type="primary" htmlType="submit" loading={ingestSubmitting} icon={<UploadOutlined />}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={ingestSubmitting}
+                  icon={<UploadOutlined />}
+                >
                   提交入库
                 </Button>
               </Form.Item>
@@ -625,7 +696,12 @@ export default function AILoveQAPage() {
                 <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
                   取消
                 </Button>
-                <Button type="primary" htmlType="submit" loading={ingestSubmitting} icon={<UploadOutlined />}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={ingestSubmitting}
+                  icon={<UploadOutlined />}
+                >
                   上传并入库
                 </Button>
               </Form.Item>
@@ -634,7 +710,11 @@ export default function AILoveQAPage() {
 
           <Tabs.TabPane tab="从 URL 导入" key="url">
             <Form form={form} layout="vertical" onFinish={onIngest}>
-              <Form.Item label="网页 URL" name="sourceUrl" rules={[{ required: true, message: '请输入 URL' }]}>
+              <Form.Item
+                label="网页 URL"
+                name="sourceUrl"
+                rules={[{ required: true, message: '请输入 URL' }]}
+              >
                 <Input placeholder="https://example.com/love-article" />
               </Form.Item>
               <Form.Item label="标题（可选）" name="title">
@@ -647,7 +727,12 @@ export default function AILoveQAPage() {
                 <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
                   取消
                 </Button>
-                <Button type="primary" htmlType="submit" loading={ingestSubmitting} icon={<UploadOutlined />}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={ingestSubmitting}
+                  icon={<UploadOutlined />}
+                >
                   抓取并入库
                 </Button>
               </Form.Item>

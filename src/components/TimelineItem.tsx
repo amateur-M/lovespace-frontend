@@ -131,9 +131,14 @@ export default function TimelineItem({
             </Typography.Text>
           ))}
       </div>
-      <Typography.Paragraph className="!mb-2 whitespace-pre-wrap">{record.content}</Typography.Paragraph>
+      <Typography.Paragraph className="!mb-2 whitespace-pre-wrap">
+        {record.content}
+      </Typography.Paragraph>
       {locText ? (
-        <Typography.Text type="secondary" className="mb-2 flex items-center gap-1.5 text-sm text-rose-800/70">
+        <Typography.Text
+          type="secondary"
+          className="mb-2 flex items-center gap-1.5 text-sm text-rose-800/70"
+        >
           <EnvironmentOutlined className="text-rose-400" aria-hidden />
           {locText}
         </Typography.Text>
@@ -152,12 +157,23 @@ export default function TimelineItem({
                 playsInline
               />
             ) : (
-              <Image key={src} src={resolved} alt="" width={96} height={96} className="rounded object-cover" />
+              <Image
+                key={src}
+                src={resolved}
+                alt=""
+                width={96}
+                height={96}
+                className="rounded object-cover"
+              />
             )
           })}
         </Space>
       ) : null}
-      <TimelineRecordSocial record={record} currentUserId={currentUserId} onMutated={onSocialMutated} />
+      <TimelineRecordSocial
+        record={record}
+        currentUserId={currentUserId}
+        onMutated={onSocialMutated}
+      />
     </div>
   )
 }

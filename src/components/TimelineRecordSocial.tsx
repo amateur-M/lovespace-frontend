@@ -1,9 +1,4 @@
-import {
-  CommentOutlined,
-  HeartFilled,
-  HeartOutlined,
-  SendOutlined,
-} from '@ant-design/icons'
+import { CommentOutlined, HeartFilled, HeartOutlined, SendOutlined } from '@ant-design/icons'
 import { Button, Empty, Input, Spin, Typography, message } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import type { LoveRecord } from '../services/timeline'
@@ -152,7 +147,11 @@ export default function TimelineRecordSocial({ record, onMutated }: TimelineReco
               <Spin />
             </div>
           ) : comments.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有评论，来抢沙发吧" className="py-2" />
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="还没有评论，来抢沙发吧"
+              className="py-2"
+            />
           ) : (
             <ul className="mb-3 max-h-64 space-y-3 overflow-y-auto pr-1">
               {comments.map((c) => {
@@ -170,7 +169,13 @@ export default function TimelineRecordSocial({ record, onMutated }: TimelineReco
             </ul>
           )}
           {hasMore && comments.length > 0 ? (
-            <Button type="link" size="small" className="!px-0 !text-rose-700" onClick={loadMore} loading={commentsLoading}>
+            <Button
+              type="link"
+              size="small"
+              className="!px-0 !text-rose-700"
+              onClick={loadMore}
+              loading={commentsLoading}
+            >
               加载更多
             </Button>
           ) : null}

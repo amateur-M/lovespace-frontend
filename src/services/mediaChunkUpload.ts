@@ -39,7 +39,11 @@ export type MediaChunkStatusData = {
   complete: boolean
 }
 
-function chunkStorageKey(target: MediaChunkTarget, albumId: string | undefined, file: File): string {
+function chunkStorageKey(
+  target: MediaChunkTarget,
+  albumId: string | undefined,
+  file: File,
+): string {
   const safe = file.name.replace(/[^\w.-]+/g, '_').slice(0, 120)
   const alb = albumId ?? '-'
   return `ls_media_chunk_${target}_${alb}_${safe}_${file.size}_${file.lastModified}`
@@ -51,15 +55,21 @@ export async function initMediaChunkUpload(body: MediaChunkInitBody) {
 }
 
 export async function getMediaChunkStatus(uploadId: string) {
-  const { data } = await http.get<ApiResponse<MediaChunkStatusData>>(`${API_BASE}/${uploadId}/status`)
+  const { data } = await http.get<ApiResponse<MediaChunkStatusData>>(
+    `${API_BASE}/${uploadId}/status`,
+  )
   return data
 }
 
 export async function putMediaChunk(uploadId: string, chunkIndex: number, blob: Blob) {
-  const { data } = await http.put<ApiResponse<null>>(`${API_BASE}/${uploadId}/chunks/${chunkIndex}`, blob, {
-    headers: { 'Content-Type': 'application/octet-stream' },
-    timeout: CHUNK_HTTP_TIMEOUT_MS,
-  })
+  const { data } = await http.put<ApiResponse<null>>(
+    `${API_BASE}/${uploadId}/chunks/${chunkIndex}`,
+    blob,
+    {
+      headers: { 'Content-Type': 'application/octet-stream' },
+      timeout: CHUNK_HTTP_TIMEOUT_MS,
+    },
+  )
   return data
 }
 

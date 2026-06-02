@@ -120,7 +120,12 @@ export function remainingMsFromAnchor(anchor: CountdownAnchor | null): number | 
   return Math.max(0, anchor.millisecondsUntilNext - (Date.now() - anchor.fetchedAt))
 }
 
-export function formatCountdown(ms: number): { days: number; hours: number; minutes: number; seconds: number } {
+export function formatCountdown(ms: number): {
+  days: number
+  hours: number
+  minutes: number
+  seconds: number
+} {
   const totalSec = Math.floor(ms / 1000)
   const days = Math.floor(totalSec / 86400)
   const hours = Math.floor((totalSec % 86400) / 3600)

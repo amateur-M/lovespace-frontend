@@ -57,7 +57,11 @@ export default function TaskFormModal({
           await onSubmit(v)
         }}
       >
-        <Form.Item name="title" label="标题" rules={[{ required: true, message: '请输入任务标题' }]}>
+        <Form.Item
+          name="title"
+          label="标题"
+          rules={[{ required: true, message: '请输入任务标题' }]}
+        >
           <Input placeholder="任务标题" maxLength={200} showCount />
         </Form.Item>
         <Form.Item name="assigneeId" label="负责人">

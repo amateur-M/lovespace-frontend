@@ -66,7 +66,9 @@ export async function separateCouple() {
 
 /** 待处理邀请列表 */
 export async function listPendingInvites() {
-  const { data } = await http.get<ApiResponse<CouplePendingInvite[]>>('/api/v1/couple/pending-invites')
+  const { data } = await http.get<ApiResponse<CouplePendingInvite[]>>(
+    '/api/v1/couple/pending-invites',
+  )
   return data
 }
 

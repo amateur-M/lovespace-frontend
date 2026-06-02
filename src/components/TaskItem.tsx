@@ -1,9 +1,4 @@
-import {
-  CheckCircleOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  MoreOutlined,
-} from '@ant-design/icons'
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, MoreOutlined } from '@ant-design/icons'
 import { Dropdown, Modal } from 'antd'
 import dayjs from 'dayjs'
 import type { PlanTask } from '../services/plan'
@@ -116,7 +111,9 @@ export default function TaskItem({
             <p className="mt-0.5 text-xs text-rose-800/65">
               {assigneeLabel(task, currentUserId, partnerUserId)}
               {task.dueDate ? ` · 截止 ${dayjs(task.dueDate).format('YYYY-MM-DD')}` : ''}
-              {done && task.completedAt ? ` · 完成于 ${dayjs(task.completedAt).format('MM-DD HH:mm')}` : ''}
+              {done && task.completedAt
+                ? ` · 完成于 ${dayjs(task.completedAt).format('MM-DD HH:mm')}`
+                : ''}
             </p>
           </div>
         </div>

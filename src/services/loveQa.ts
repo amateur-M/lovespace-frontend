@@ -82,9 +82,13 @@ export type RetrievedChunk = {
 
 /** 单轮 / 多轮恋爱问答（非流式；RAG + Redis 记忆；服务端再落 MySQL） */
 export async function postLoveQaChat(body: LoveQaChatBody) {
-  const { data } = await http.post<ApiResponse<LoveQaChatResponseData>>('/api/v1/ai/love-qa/chat', body, {
-    timeout: CHAT_TIMEOUT_MS,
-  })
+  const { data } = await http.post<ApiResponse<LoveQaChatResponseData>>(
+    '/api/v1/ai/love-qa/chat',
+    body,
+    {
+      timeout: CHAT_TIMEOUT_MS,
+    },
+  )
   return data
 }
 
@@ -177,7 +181,7 @@ export async function postLoveQaChatStream(
     carry += decoder.decode(value, { stream: true })
     const { blocks, rest } = splitSseBlocks(carry)
     carry = rest
-      for (const block of blocks) {
+    for (const block of blocks) {
       const ev = parseSseBlock(block)
       if (!ev) continue
       try {
@@ -229,9 +233,12 @@ export async function postLoveQaIngest(body: LoveQaIngestBody) {
 }
 
 export async function getLoveQaConversations(page = 1, pageSize = 20) {
-  const { data } = await http.get<ApiResponse<LoveQaConversationPageResponse>>('/api/v1/ai/love-qa/conversations', {
-    params: { page, pageSize },
-  })
+  const { data } = await http.get<ApiResponse<LoveQaConversationPageResponse>>(
+    '/api/v1/ai/love-qa/conversations',
+    {
+      params: { page, pageSize },
+    },
+  )
   return data
 }
 

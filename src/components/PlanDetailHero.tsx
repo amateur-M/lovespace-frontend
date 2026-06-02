@@ -55,14 +55,21 @@ export default function PlanDetailHero({ plan, onEdit, onDelete }: PlanDetailHer
                 {typeLabel}
               </Tag>
               {plan.status ? (
-                <Tag className="!m-0 border-rose-200/80 bg-white/80 text-rose-900">{plan.status}</Tag>
+                <Tag className="!m-0 border-rose-200/80 bg-white/80 text-rose-900">
+                  {plan.status}
+                </Tag>
               ) : null}
             </div>
-            <Typography.Title level={2} className="!mb-3 !text-rose-950 !text-2xl !font-semibold !tracking-tight sm:!text-3xl">
+            <Typography.Title
+              level={2}
+              className="!mb-3 !text-rose-950 !text-2xl !font-semibold !tracking-tight sm:!text-3xl"
+            >
               {plan.title}
             </Typography.Title>
             {plan.description ? (
-              <p className="max-w-3xl text-[15px] leading-relaxed text-rose-900/75">{plan.description}</p>
+              <p className="max-w-3xl text-[15px] leading-relaxed text-rose-900/75">
+                {plan.description}
+              </p>
             ) : (
               <p className="text-sm italic text-rose-800/45">暂无描述</p>
             )}
@@ -120,11 +127,15 @@ export default function PlanDetailHero({ plan, onEdit, onDelete }: PlanDetailHer
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:max-w-lg">
           <div className="rounded-xl border border-rose-100/90 bg-white/60 px-4 py-3 backdrop-blur-sm">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-rose-700/55">完成度</div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-rose-700/55">
+              完成度
+            </div>
             <div className="mt-1 tabular-nums text-xl font-semibold text-rose-950">{progress}%</div>
           </div>
           <div className="rounded-xl border border-rose-100/90 bg-white/60 px-4 py-3 backdrop-blur-sm">
-            <div className="text-[11px] font-medium uppercase tracking-wider text-rose-700/55">任务</div>
+            <div className="text-[11px] font-medium uppercase tracking-wider text-rose-700/55">
+              任务
+            </div>
             <div className="mt-1 tabular-nums text-xl font-semibold text-rose-950">
               {taskCount ? `${doneCount}/${taskCount}` : '—'}
             </div>
@@ -136,7 +147,9 @@ export default function PlanDetailHero({ plan, onEdit, onDelete }: PlanDetailHer
         </div>
 
         <div className="mt-6 rounded-xl border border-amber-100/80 bg-white/50 px-4 py-4 backdrop-blur-sm sm:px-5">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-rose-800/50">预算与消费</div>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-rose-800/50">
+            预算与消费
+          </div>
           <BudgetTracker
             total={plan.budgetTotal}
             spent={plan.budgetSpent}

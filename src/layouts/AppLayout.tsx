@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { useInboxStore } from '../stores/inboxStore'
+import { resolveMediaUrl } from '../utils/mediaUrl'
 
 const { Header, Content, Footer } = Layout
 
@@ -35,13 +36,7 @@ const authedNavItems: NavItem[] = [
 
 const guestNavItems: NavItem[] = [{ to: '/', label: '首页', icon: <HomeOutlined aria-hidden /> }]
 
-function NavPill({
-  item,
-  className,
-}: {
-  item: NavItem
-  className?: string
-}) {
+function NavPill({ item, className }: { item: NavItem; className?: string }) {
   return (
     <NavLink
       to={item.to}
@@ -57,7 +52,9 @@ function NavPill({
         ].join(' ')
       }
     >
-      <span className="flex shrink-0 text-[15px] text-rose-600 [&_.anticon]:align-[-0.125em]">{item.icon}</span>
+      <span className="flex shrink-0 text-[15px] text-rose-600 [&_.anticon]:align-[-0.125em]">
+        {item.icon}
+      </span>
       <span className="hidden min-[400px]:inline">{item.label}</span>
     </NavLink>
   )
@@ -230,7 +227,7 @@ export default function AppLayout() {
                 className="flex shrink-0 cursor-pointer select-none items-center rounded-full border border-rose-200/90 bg-white p-0.5 transition-colors duration-200 hover:border-rose-300 hover:shadow-sm"
                 aria-label="用户菜单"
               >
-                <Avatar size={34} src={user?.avatarUrl ?? undefined}>
+                <Avatar size={34} src={resolveMediaUrl(user?.avatarUrl) || undefined}>
                   {user?.username?.slice(0, 1)?.toUpperCase() ?? 'U'}
                 </Avatar>
               </button>
@@ -254,7 +251,14 @@ export default function AppLayout() {
       </Content>
       <Footer className="mt-auto shrink-0 border-t border-rose-200/80 bg-white py-6 text-center text-sm text-rose-800/65 sm:py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-3">
-          <img src="/lovespace-logo-four.svg" width={28} height={28} className="opacity-90" alt="" aria-hidden />
+          <img
+            src="/lovespace-logo-four.svg"
+            width={28}
+            height={28}
+            className="opacity-90"
+            alt=""
+            aria-hidden
+          />
           <span>LoveSpace © {new Date().getFullYear()}</span>
         </div>
       </Footer>

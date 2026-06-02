@@ -2,7 +2,7 @@ import { Button, DatePicker, Form, Input, Modal, Radio, Select, Upload, message 
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
-import { MOOD_OPTIONS } from './MoodTag'
+import { MOOD_OPTIONS } from '../utils/mood'
 import {
   VISIBILITY_COUPLE,
   VISIBILITY_SELF,
@@ -57,7 +57,13 @@ function parseImages(json?: string | null): string[] {
 }
 
 /** 新建 / 编辑时间轴记录表单（弹窗内使用）。默认双方可见。 */
-export default function TimelineForm({ coupleId, open, editingRecord, onClose, onSuccess }: TimelineFormProps) {
+export default function TimelineForm({
+  coupleId,
+  open,
+  editingRecord,
+  onClose,
+  onSuccess,
+}: TimelineFormProps) {
   const [form] = Form.useForm<TimelineFormValues>()
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -250,7 +256,8 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
             return true
           }}
           onPreview={(file) => {
-            const raw = typeof file.url === 'string' ? file.url : (file.response as string | undefined)
+            const raw =
+              typeof file.url === 'string' ? file.url : (file.response as string | undefined)
             if (!raw) return
             const u = resolveMediaUrl(raw)
             setPreview({ video: isTimelineVideoUrl(u), url: u })
@@ -290,7 +297,12 @@ export default function TimelineForm({ coupleId, open, editingRecord, onClose, o
         title={preview?.video ? '视频预览' : '图片预览'}
       >
         {preview?.video ? (
-          <video src={preview.url} controls className="max-h-[70vh] w-full rounded bg-black" playsInline />
+          <video
+            src={preview.url}
+            controls
+            className="max-h-[70vh] w-full rounded bg-black"
+            playsInline
+          />
         ) : preview ? (
           <img src={preview.url} alt="" className="max-h-[70vh] w-full object-contain" />
         ) : null}

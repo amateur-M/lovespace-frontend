@@ -8,7 +8,11 @@ type ProgressBarProps = {
 /**
  * 水平进度条，用于计划完成度展示。
  */
-export default function ProgressBar({ percent, className = '', 'aria-label': ariaLabel }: ProgressBarProps) {
+export default function ProgressBar({
+  percent,
+  className = '',
+  'aria-label': ariaLabel,
+}: ProgressBarProps) {
   const p = Math.min(100, Math.max(0, Number.isFinite(percent) ? percent : 0))
   return (
     <div

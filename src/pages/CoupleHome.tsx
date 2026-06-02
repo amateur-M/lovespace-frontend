@@ -136,7 +136,10 @@ export default function CoupleHome() {
               <Text className="text-sm text-rose-950">
                 你有 <strong>{pendingInviteCount}</strong> 条待处理邀请，请前往
               </Text>{' '}
-              <Link to="/inbox" className="ls-link text-sm font-semibold text-rose-800 underline-offset-2">
+              <Link
+                to="/inbox"
+                className="ls-link text-sm font-semibold text-rose-800 underline-offset-2"
+              >
                 消息
               </Link>
               <Text className="text-sm text-rose-950"> 处理。</Text>
@@ -144,10 +147,7 @@ export default function CoupleHome() {
           )}
 
           <Card className="ls-surface mx-auto max-w-lg !shadow-sm" loading={loading}>
-            <Empty
-              description="暂未绑定情侣"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            >
+            <Empty description="暂未绑定情侣" image={Empty.PRESENTED_IMAGE_SIMPLE}>
               <Space wrap className="justify-center">
                 <Button type="primary" size="large" onClick={() => setInviteOpen(true)}>
                   邀请 TA
@@ -183,15 +183,16 @@ export default function CoupleHome() {
                   id="couple-hero-title"
                   className="!mb-0 !text-2xl !font-semibold !tracking-tight !text-stone-900 sm:!text-3xl"
                 >
-                  {info.partner?.username
-                    ? `和 ${info.partner.username} 的小世界`
-                    : '我们的小世界'}
+                  {info.partner?.username ? `和 ${info.partner.username} 的小世界` : '我们的小世界'}
                 </Typography.Title>
                 <Paragraph className="!mb-0 max-w-xl text-[15px] leading-relaxed text-rose-900/75">
                   时间轴、相册与计划都在这里串联；每一天都值得被记住。
                 </Paragraph>
               </div>
-              <div className="flex shrink-0 gap-2 text-2xl text-rose-300/90 sm:text-3xl" aria-hidden>
+              <div
+                className="flex shrink-0 gap-2 text-2xl text-rose-300/90 sm:text-3xl"
+                aria-hidden
+              >
                 <HeartOutlined />
                 <HeartOutlined className="!opacity-70" />
                 <HeartOutlined className="!opacity-40" />
@@ -201,7 +202,12 @@ export default function CoupleHome() {
 
           <div className="grid gap-6 lg:grid-cols-12 lg:items-stretch">
             <div className="lg:col-span-5">
-              <CoupleCard me={user} partner={info.partner} status={info.status} className="!h-full" />
+              <CoupleCard
+                me={user}
+                partner={info.partner}
+                status={info.status}
+                className="!h-full"
+              />
             </div>
 
             <div className="flex flex-col gap-6 lg:col-span-7">
@@ -218,7 +224,11 @@ export default function CoupleHome() {
                       </Space>
                     </Descriptions.Item>
                     <Descriptions.Item label="绑定状态">
-                      {info.status === 1 ? '交往中' : info.status === 2 ? '已冻结' : `状态码 ${info.status}`}
+                      {info.status === 1
+                        ? '交往中'
+                        : info.status === 2
+                          ? '已冻结'
+                          : `状态码 ${info.status}`}
                     </Descriptions.Item>
                   </Descriptions>
                 </Space>
@@ -238,7 +248,9 @@ export default function CoupleHome() {
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100/90 text-lg text-rose-600 transition-colors group-hover:bg-rose-200/90">
                         {item.icon}
                       </span>
-                      <span className="text-xs font-medium text-stone-700 group-hover:text-rose-950">{item.label}</span>
+                      <span className="text-xs font-medium text-stone-700 group-hover:text-rose-950">
+                        {item.label}
+                      </span>
                     </Link>
                   ))}
                 </div>
@@ -258,7 +270,11 @@ export default function CoupleHome() {
               okButtonProps={{ danger: true }}
               onConfirm={onSeparate}
             >
-              <Button type="link" size="small" className="!mt-2 !h-auto !p-0 !text-stone-400 hover:!text-rose-700">
+              <Button
+                type="link"
+                size="small"
+                className="!mt-2 !h-auto !p-0 !text-stone-400 hover:!text-rose-700"
+              >
                 解除情侣关系
               </Button>
             </Popconfirm>

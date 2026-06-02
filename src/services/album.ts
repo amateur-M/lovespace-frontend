@@ -65,7 +65,11 @@ export type UpdateAlbumPhotoBody = {
   tagsJson?: string | null
 }
 
-export async function updateAlbumPhoto(albumId: string, photoId: string, body: UpdateAlbumPhotoBody) {
+export async function updateAlbumPhoto(
+  albumId: string,
+  photoId: string,
+  body: UpdateAlbumPhotoBody,
+) {
   const { data } = await http.put<ApiResponse<AlbumPhoto>>(
     `/api/v1/albums/${albumId}/photos/${photoId}`,
     body,
@@ -101,22 +105,31 @@ export async function uploadAlbumPhoto(albumId: string, file: File, extra?: Uplo
   if (extra?.locationJson) formData.append('locationJson', extra.locationJson)
   if (extra?.takenDate) formData.append('takenDate', extra.takenDate)
   if (extra?.tagsJson) formData.append('tagsJson', extra.tagsJson)
-  const { data } = await http.post<ApiResponse<AlbumPhoto>>(`/api/v1/albums/${albumId}/photos`, formData)
+  const { data } = await http.post<ApiResponse<AlbumPhoto>>(
+    `/api/v1/albums/${albumId}/photos`,
+    formData,
+  )
   return data
 }
 
 export type RegisterAlbumPhotoFromUrlBody = UploadPhotoExtra & { imageUrl: string }
 
 /** 分片合并得到 imageUrl 后写入照片记录。 */
-export async function registerAlbumPhotoFromUrl(albumId: string, body: RegisterAlbumPhotoFromUrlBody) {
-  const { data } = await http.post<ApiResponse<AlbumPhoto>>(`/api/v1/albums/${albumId}/photos/from-url`, {
-    imageUrl: body.imageUrl,
-    thumbnailUrl: body.thumbnailUrl,
-    description: body.description,
-    locationJson: body.locationJson,
-    takenDate: body.takenDate,
-    tagsJson: body.tagsJson,
-  })
+export async function registerAlbumPhotoFromUrl(
+  albumId: string,
+  body: RegisterAlbumPhotoFromUrlBody,
+) {
+  const { data } = await http.post<ApiResponse<AlbumPhoto>>(
+    `/api/v1/albums/${albumId}/photos/from-url`,
+    {
+      imageUrl: body.imageUrl,
+      thumbnailUrl: body.thumbnailUrl,
+      description: body.description,
+      locationJson: body.locationJson,
+      takenDate: body.takenDate,
+      tagsJson: body.tagsJson,
+    },
+  )
   return data
 }
 
@@ -143,7 +156,9 @@ export async function uploadAlbumPhotoAuto(
 }
 
 export async function deleteAlbumPhoto(albumId: string, photoId: string) {
-  const { data } = await http.delete<ApiResponse<unknown>>(`/api/v1/albums/${albumId}/photos/${photoId}`)
+  const { data } = await http.delete<ApiResponse<unknown>>(
+    `/api/v1/albums/${albumId}/photos/${photoId}`,
+  )
   return data
 }
 

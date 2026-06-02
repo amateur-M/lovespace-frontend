@@ -118,9 +118,7 @@ export default function AILoveLetterPage() {
               <Text strong className="text-rose-900">
                 {partnerName}
               </Text>
-              {days != null ? (
-                <span className="text-stone-600"> · 已相恋 {days} 天</span>
-              ) : null}
+              {days != null ? <span className="text-stone-600"> · 已相恋 {days} 天</span> : null}
             </div>
           )}
         </div>
@@ -132,10 +130,7 @@ export default function AILoveLetterPage() {
         </div>
       ) : !coupleId ? (
         <Card className="ls-surface !border-dashed !border-rose-300/80 !bg-white/90">
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="请先完成情侣绑定后再生成情书"
-          >
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先完成情侣绑定后再生成情书">
             <Link
               to="/couple"
               className="ls-link inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 font-medium"
@@ -163,11 +158,7 @@ export default function AILoveLetterPage() {
                 name="style"
                 rules={[{ required: true, message: '请选择风格' }]}
               >
-                <Select
-                  options={STYLE_OPTIONS}
-                  className="!rounded-xl"
-                  placeholder="选择文风"
-                />
+                <Select options={STYLE_OPTIONS} className="!rounded-xl" placeholder="选择文风" />
               </Form.Item>
               <Form.Item
                 label="篇幅"

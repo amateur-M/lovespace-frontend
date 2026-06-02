@@ -2,6 +2,7 @@ import { Avatar, Button, Card, DatePicker, Form, Input, Select, Space, Upload, m
 import dayjs from 'dayjs'
 import { useEffect } from 'react'
 import { useAuthStore } from '../stores/authStore'
+import { resolveMediaUrl } from '../utils/mediaUrl'
 
 type ProfileFormValues = {
   username?: string
@@ -60,10 +61,13 @@ export default function Profile() {
   }
 
   return (
-    <Card className="ls-surface !shadow-sm" title={<span className="font-medium text-orange-950">个人信息</span>}>
+    <Card
+      className="ls-surface !shadow-sm"
+      title={<span className="font-medium text-orange-950">个人信息</span>}
+    >
       <Form form={form} layout="vertical" onFinish={onSave}>
         <Space align="center" size={16} className="mb-4">
-          <Avatar size={72} src={user?.avatarUrl || undefined}>
+          <Avatar size={72} src={resolveMediaUrl(user?.avatarUrl) || undefined}>
             {user?.username?.slice(0, 1)?.toUpperCase() ?? 'U'}
           </Avatar>
           <Upload
@@ -108,11 +112,7 @@ export default function Profile() {
           <Input placeholder="展示名称" />
         </Form.Item>
 
-        <Form.Item
-          label="邮箱"
-          name="email"
-          rules={[{ type: 'email', message: '邮箱格式不正确' }]}
-        >
+        <Form.Item label="邮箱" name="email" rules={[{ type: 'email', message: '邮箱格式不正确' }]}>
           <Input placeholder="选填，用于联系与找回提示" allowClear />
         </Form.Item>
 

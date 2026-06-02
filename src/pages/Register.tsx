@@ -40,7 +40,8 @@ export default function Register() {
                 validator: (_, v) => {
                   const d = (v as string)?.replace(/\D/g, '') ?? ''
                   if (!d) return Promise.reject(new Error('请输入手机号'))
-                  if (!CN_MOBILE.test(d)) return Promise.reject(new Error('请输入有效的 11 位手机号'))
+                  if (!CN_MOBILE.test(d))
+                    return Promise.reject(new Error('请输入有效的 11 位手机号'))
                   return Promise.resolve()
                 },
               },

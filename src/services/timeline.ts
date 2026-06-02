@@ -65,7 +65,9 @@ export async function listTimelineRecords(
   const params: Record<string, string | number> = { coupleId, page, pageSize }
   if (range?.startDate) params.startDate = range.startDate
   if (range?.endDate) params.endDate = range.endDate
-  const { data } = await http.get<ApiResponse<LoveRecordPage>>('/api/v1/timeline/records', { params })
+  const { data } = await http.get<ApiResponse<LoveRecordPage>>('/api/v1/timeline/records', {
+    params,
+  })
   return data
 }
 
@@ -112,7 +114,9 @@ export async function deleteTimelineRecord(id: string) {
 export type LikeState = { likeCount: number; likedByMe: boolean }
 
 export async function toggleTimelineLike(recordId: string) {
-  const { data } = await http.post<ApiResponse<LikeState>>(`/api/v1/timeline/records/${recordId}/like`)
+  const { data } = await http.post<ApiResponse<LikeState>>(
+    `/api/v1/timeline/records/${recordId}/like`,
+  )
   return data
 }
 
@@ -125,9 +129,12 @@ export async function listTimelineComments(recordId: string, page = 1, pageSize 
 }
 
 export async function postTimelineComment(recordId: string, content: string) {
-  const { data } = await http.post<ApiResponse<LoveRecordComment>>(`/api/v1/timeline/records/${recordId}/comments`, {
-    content,
-  })
+  const { data } = await http.post<ApiResponse<LoveRecordComment>>(
+    `/api/v1/timeline/records/${recordId}/comments`,
+    {
+      content,
+    },
+  )
   return data
 }
 

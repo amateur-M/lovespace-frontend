@@ -8,6 +8,7 @@ import MessageInput from '../components/MessageInput'
 import { http } from '../services/http'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
+import { resolveMediaUrl } from '../utils/mediaUrl'
 
 type ApiResponse<T> = {
   code: number
@@ -70,36 +71,43 @@ export default function ChatPage() {
     return weeks[t.day()]
   }, [])
 
-  const fetchMessagesByPage = useCallback(async (page: number) => {
-    if (!coupleId) return
-    if (page <= 1) setLoadingMessages(true)
-    else setLoadingMore(true)
-    try {
-      const { data } = await http.get<ApiResponse<MessageListItem[]>>('/api/v1/messages', {
-        params: { coupleId, page, pageSize: DEFAULT_PAGE_SIZE },
-      })
-      if (data.code !== 0 || !data.data) {
-        throw new Error(data.message || '加载消息失败')
-      }
-      const ascending = [...data.data].sort((a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf())
-      if (page === 1) {
-        setMessages(ascending)
-      } else {
-        setMessages((prev) => {
-          const map = new Map<string, MessageListItem>()
-          for (const m of [...ascending, ...prev]) map.set(m.id, m)
-          return [...map.values()].sort((a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf())
+  const fetchMessagesByPage = useCallback(
+    async (page: number) => {
+      if (!coupleId) return
+      if (page <= 1) setLoadingMessages(true)
+      else setLoadingMore(true)
+      try {
+        const { data } = await http.get<ApiResponse<MessageListItem[]>>('/api/v1/messages', {
+          params: { coupleId, page, pageSize: DEFAULT_PAGE_SIZE },
         })
+        if (data.code !== 0 || !data.data) {
+          throw new Error(data.message || '加载消息失败')
+        }
+        const ascending = [...data.data].sort(
+          (a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf(),
+        )
+        if (page === 1) {
+          setMessages(ascending)
+        } else {
+          setMessages((prev) => {
+            const map = new Map<string, MessageListItem>()
+            for (const m of [...ascending, ...prev]) map.set(m.id, m)
+            return [...map.values()].sort(
+              (a, b) => dayjs(a.createdAt).valueOf() - dayjs(b.createdAt).valueOf(),
+            )
+          })
+        }
+        setCurrentPage(page)
+        setHasMore(data.data.length >= DEFAULT_PAGE_SIZE)
+      } catch (e) {
+        antdMessage.error(e instanceof Error ? e.message : '加载消息失败')
+      } finally {
+        setLoadingMessages(false)
+        setLoadingMore(false)
       }
-      setCurrentPage(page)
-      setHasMore(data.data.length >= DEFAULT_PAGE_SIZE)
-    } catch (e) {
-      antdMessage.error(e instanceof Error ? e.message : '加载消息失败')
-    } finally {
-      setLoadingMessages(false)
-      setLoadingMore(false)
-    }
-  }, [coupleId])
+    },
+    [coupleId],
+  )
 
   useEffect(() => {
     if (!coupleId) return
@@ -114,10 +122,14 @@ export default function ChatPage() {
   }, [coupleId, fetchMessagesByPage, scrollToBottom])
 
   const unreadCount = useMemo(
-    () => messages.filter((m) => m.receiverId === meId && m.isRead === 0 && m.isRetracted === 0).length,
+    () =>
+      messages.filter((m) => m.receiverId === meId && m.isRead === 0 && m.isRetracted === 0).length,
     [meId, messages],
   )
-  const latestMessage = useMemo(() => (messages.length > 0 ? messages[messages.length - 1] : null), [messages])
+  const latestMessage = useMemo(
+    () => (messages.length > 0 ? messages[messages.length - 1] : null),
+    [messages],
+  )
 
   const latestPreview = useMemo(() => {
     if (!latestMessage) return '你们的私密会话'
@@ -128,7 +140,9 @@ export default function ChatPage() {
 
   const markVisibleMessagesRead = useCallback(async () => {
     if (!meId) return
-    const unread = messages.filter((m) => m.receiverId === meId && m.isRead === 0 && m.isRetracted === 0)
+    const unread = messages.filter(
+      (m) => m.receiverId === meId && m.isRead === 0 && m.isRetracted === 0,
+    )
     if (unread.length === 0) return
     await Promise.all(
       unread.map(async (m) => {
@@ -226,7 +240,9 @@ export default function ChatPage() {
         throw new Error(data.message || '撤回失败')
       }
       setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? { ...m, isRetracted: 1, content: '此消息已撤回' } : m)),
+        prev.map((m) =>
+          m.id === messageId ? { ...m, isRetracted: 1, content: '此消息已撤回' } : m,
+        ),
       )
       antdMessage.success('消息已撤回')
     } catch (e) {
@@ -264,8 +280,7 @@ export default function ChatPage() {
             const payload = JSON.parse(evt.data)
             if (payload?.type === 'privateMessage' && payload?.data) {
               const el = chatBodyRef.current
-              const nearBottom =
-                !!el && el.scrollHeight - el.scrollTop - el.clientHeight < 120
+              const nearBottom = !!el && el.scrollHeight - el.scrollTop - el.clientHeight < 120
               upsertMessage(payload.data as ChatMessage)
               if (nearBottom) {
                 setTimeout(scrollToBottom, 0)
@@ -303,7 +318,7 @@ export default function ChatPage() {
         // ignore
       }
     }
-  }, [coupleId, meId, partner?.id, scrollToBottom, upsertMessage])
+  }, [coupleId, meId, partner, scrollToBottom, upsertMessage])
 
   const onMessageScroll = useCallback(async () => {
     const el = chatBodyRef.current
@@ -356,7 +371,11 @@ export default function ChatPage() {
           renderItem={(item) => (
             <List.Item className="!cursor-pointer !border-b !border-rose-200 !px-2 !py-3 last:!border-b-0 hover:!bg-rose-50/80">
               <List.Item.Meta
-                avatar={<Avatar src={item.avatarUrl ?? undefined}>{item.username.slice(0, 1).toUpperCase()}</Avatar>}
+                avatar={
+                  <Avatar src={resolveMediaUrl(item.avatarUrl) || undefined}>
+                    {item.username.slice(0, 1).toUpperCase()}
+                  </Avatar>
+                }
                 title={
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-rose-950">{item.username}</span>
@@ -366,7 +385,9 @@ export default function ChatPage() {
                 description={
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="line-clamp-1 max-w-[150px]">{latestPreview}</span>
-                    {latestMessage ? <span>{formatSessionTime(latestMessage.createdAt)}</span> : null}
+                    {latestMessage ? (
+                      <span>{formatSessionTime(latestMessage.createdAt)}</span>
+                    ) : null}
                   </div>
                 }
               />

@@ -1,5 +1,16 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Button, DatePicker, Form, Input, InputNumber, Modal, Select, Table, Typography, message } from 'antd'
+import {
+  Button,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Table,
+  Typography,
+  message,
+} from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useState } from 'react'
@@ -197,7 +208,13 @@ export default function PlanExpensePanel({
       align: 'right',
       render: (_, r) => (
         <div className="flex justify-end gap-1">
-          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(r)} aria-label="编辑" />
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => openEdit(r)}
+            aria-label="编辑"
+          />
           <Button
             type="text"
             size="small"
@@ -215,12 +232,19 @@ export default function PlanExpensePanel({
     <div className={className}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-800/45">流水</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-800/45">
+            流水
+          </div>
           <Typography.Title level={5} className="!mb-0 !mt-0.5 !text-rose-950">
             消费明细
           </Typography.Title>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} className="cursor-pointer" onClick={openCreate}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          className="cursor-pointer"
+          onClick={openCreate}
+        >
           记一笔
         </Button>
       </div>
@@ -248,8 +272,18 @@ export default function PlanExpensePanel({
         destroyOnClose
         onOk={() => form.submit()}
       >
-        <Form<ExpenseFormValues> form={form} layout="vertical" initialValues={DEFAULT_FORM} onFinish={handleSubmit} className="mt-2">
-          <Form.Item name="expenseType" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
+        <Form<ExpenseFormValues>
+          form={form}
+          layout="vertical"
+          initialValues={DEFAULT_FORM}
+          onFinish={handleSubmit}
+          className="mt-2"
+        >
+          <Form.Item
+            name="expenseType"
+            label="类型"
+            rules={[{ required: true, message: '请选择类型' }]}
+          >
             <Select options={PLAN_EXPENSE_TYPE_OPTIONS} />
           </Form.Item>
           <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入金额' }]}>

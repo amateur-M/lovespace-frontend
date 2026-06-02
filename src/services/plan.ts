@@ -121,7 +121,10 @@ export function normalizePlan(raw: Plan): Plan {
     ...raw,
     tasks,
     progress: coerceProgress(raw.progress),
-    priority: typeof raw.priority === 'number' && !Number.isNaN(raw.priority) ? raw.priority : Number(raw.priority) || 0,
+    priority:
+      typeof raw.priority === 'number' && !Number.isNaN(raw.priority)
+        ? raw.priority
+        : Number(raw.priority) || 0,
     expenseSummary,
   }
 }
@@ -216,13 +219,18 @@ export async function createPlanTask(planId: string, body: CreatePlanTaskBody) {
 }
 
 export async function updatePlanTask(planId: string, taskId: string, body: PlanTaskReplaceBody) {
-  const { data } = await http.put<ApiResponse<PlanTask>>(`/api/v1/plans/${planId}/tasks/${taskId}`, body)
+  const { data } = await http.put<ApiResponse<PlanTask>>(
+    `/api/v1/plans/${planId}/tasks/${taskId}`,
+    body,
+  )
   if (data.code !== 0 || data.data == null) return data
   return { ...data, data: normalizePlanTask(data.data) }
 }
 
 export async function deletePlanTask(planId: string, taskId: string) {
-  const { data } = await http.delete<ApiResponse<unknown>>(`/api/v1/plans/${planId}/tasks/${taskId}`)
+  const { data } = await http.delete<ApiResponse<unknown>>(
+    `/api/v1/plans/${planId}/tasks/${taskId}`,
+  )
   return data
 }
 
@@ -244,12 +252,19 @@ export async function listPlanExpenses(planId: string) {
 }
 
 export async function createPlanExpense(planId: string, body: PlanExpenseCreateBody) {
-  const { data } = await http.post<ApiResponse<PlanExpense>>(`/api/v1/plans/${planId}/expenses`, body)
+  const { data } = await http.post<ApiResponse<PlanExpense>>(
+    `/api/v1/plans/${planId}/expenses`,
+    body,
+  )
   if (data.code !== 0 || data.data == null) return data
   return { ...data, data: normalizeExpense(data.data) }
 }
 
-export async function updatePlanExpense(planId: string, expenseId: string, body: PlanExpenseReplaceBody) {
+export async function updatePlanExpense(
+  planId: string,
+  expenseId: string,
+  body: PlanExpenseReplaceBody,
+) {
   const { data } = await http.put<ApiResponse<PlanExpense>>(
     `/api/v1/plans/${planId}/expenses/${expenseId}`,
     body,
@@ -259,6 +274,8 @@ export async function updatePlanExpense(planId: string, expenseId: string, body:
 }
 
 export async function deletePlanExpense(planId: string, expenseId: string) {
-  const { data } = await http.delete<ApiResponse<unknown>>(`/api/v1/plans/${planId}/expenses/${expenseId}`)
+  const { data } = await http.delete<ApiResponse<unknown>>(
+    `/api/v1/plans/${planId}/expenses/${expenseId}`,
+  )
   return data
 }
