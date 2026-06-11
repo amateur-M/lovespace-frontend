@@ -1,7 +1,9 @@
 import {
   CommentOutlined,
+  DeleteOutlined,
   HeartOutlined,
   MenuOutlined,
+  MoreOutlined,
   PlusOutlined,
   ReloadOutlined,
   SendOutlined,
@@ -10,11 +12,14 @@ import {
 import {
   Alert,
   Button,
+  Dropdown,
   Form,
   Input,
   Modal,
+  Pagination,
   Spin,
   Tabs,
+  Tag,
   Tooltip,
   Typography,
   Upload,
@@ -25,13 +30,17 @@ import dayjs from 'dayjs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
+  deleteLoveQaDocument,
   getLoveQaConversations,
+  getLoveQaDocuments,
   getLoveQaMessages,
   postLoveQaChatStream,
   postLoveQaIngest,
   postLoveQaIngestFile,
   postLoveQaIngestUrl,
+  postLoveQaReingest,
   type LoveQaConversationSummary,
+  type LoveQaDocumentSummary,
   type LoveQaMessageLine,
   type RetrievedChunk,
 } from '../services/loveQa'
@@ -41,6 +50,27 @@ import { useCoupleStore } from '../stores/coupleStore'
 const { Text, Title } = Typography
 
 type IngestMode = 'text' | 'file' | 'url'
+type SidebarTab = 'chat' | 'knowledge'
+
+const DOC_PAGE_SIZE = 10
+
+function documentStatusTag(status: string) {
+  switch (status) {
+    case 'SUCCESS':
+      return <Tag color="success">已入库</Tag>
+    case 'PENDING':
+    case 'PROCESSING':
+      return (
+        <Tag color="processing" icon={<Spin size="small" />}>
+          处理中
+        </Tag>
+      )
+    case 'FAILED':
+      return <Tag color="error">失败</Tag>
+    default:
+      return <Tag>{status}</Tag>
+  }
+}
 
 type HighlightedSource = {
   messageKey: string
@@ -104,6 +134,11 @@ export default function AILoveQAPage() {
   const [listLoading, setListLoading] = useState(false)
   const [conversations, setConversations] = useState<LoveQaConversationSummary[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('chat')
+  const [documents, setDocuments] = useState<LoveQaDocumentSummary[]>([])
+  const [documentsLoading, setDocumentsLoading] = useState(false)
+  const [docPage, setDocPage] = useState(1)
+  const [docTotal, setDocTotal] = useState(0)
   const [ingestOpen, setIngestOpen] = useState(false)
   const [ingestMode, setIngestMode] = useState<IngestMode>('text')
   const [ingestSubmitting, setIngestSubmitting] = useState(false)
@@ -143,6 +178,86 @@ export default function AILoveQAPage() {
     if (!isAuthed) return
     void loadConversations()
   }, [isAuthed, loadConversations])
+
+  const loadDocuments = useCallback(
+    async (page?: number) => {
+      const targetPage = page ?? 1
+      if (!coupleId) {
+        setDocuments([])
+        setDocTotal(0)
+        return
+      }
+      setDocumentsLoading(true)
+      try {
+        const resp = await getLoveQaDocuments(coupleId, targetPage, DOC_PAGE_SIZE)
+        if (resp.code !== 0 || !resp.data) {
+          throw new Error(resp.message || '加载知识库失败')
+        }
+        setDocuments(resp.data.items)
+        setDocTotal(resp.data.total)
+        setDocPage(resp.data.page)
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '加载知识库失败')
+      } finally {
+        setDocumentsLoading(false)
+      }
+    },
+    [coupleId],
+  )
+
+  useEffect(() => {
+    if (!isAuthed || sidebarTab !== 'knowledge') return
+    void loadDocuments(docPage)
+  }, [isAuthed, sidebarTab, coupleId, docPage, loadDocuments])
+
+  const hasProcessingDocs = documents.some(
+    (d) => d.status === 'PENDING' || d.status === 'PROCESSING',
+  )
+
+  useEffect(() => {
+    if (!hasProcessingDocs || sidebarTab !== 'knowledge') return
+    const timer = window.setInterval(() => {
+      void loadDocuments(docPage)
+    }, 3000)
+    return () => window.clearInterval(timer)
+  }, [hasProcessingDocs, sidebarTab, docPage, loadDocuments])
+
+  const handleDeleteDocument = useCallback(
+    (doc: LoveQaDocumentSummary) => {
+      Modal.confirm({
+        title: '删除知识库文档',
+        content: `确定删除「${doc.title?.trim() || '未命名文档'}」？删除后问答将不再召回该内容。`,
+        okText: '删除',
+        okType: 'danger',
+        cancelText: '取消',
+        onOk: async () => {
+          const resp = await deleteLoveQaDocument(doc.documentId)
+          if (resp.code !== 0) {
+            throw new Error(resp.message || '删除失败')
+          }
+          message.success('已删除')
+          void loadDocuments(docPage)
+        },
+      })
+    },
+    [docPage, loadDocuments],
+  )
+
+  const handleReingestDocument = useCallback(
+    async (doc: LoveQaDocumentSummary) => {
+      try {
+        const resp = await postLoveQaReingest(doc.documentId)
+        if (resp.code !== 0 || !resp.data) {
+          throw new Error(resp.message || '重入库失败')
+        }
+        message.info('已提交重入库，请稍候刷新状态')
+        void loadDocuments(docPage)
+      } catch (e) {
+        message.error(e instanceof Error ? e.message : '重入库失败')
+      }
+    },
+    [docPage, loadDocuments],
+  )
 
   /** 仅在消息列表容器内滚动；切换会话瞬间滚到底，同会话内新消息平滑滚到底 */
   useLayoutEffect(() => {
@@ -318,9 +433,17 @@ export default function AILoveQAPage() {
         if (!resp || resp.code !== 0 || !resp.data) {
           throw new Error(resp?.message || '入库失败')
         }
-        message.success(
-          `已入库 ${resp.data.chunkCount} 个片段（文档 ${resp.data.documentId.slice(0, 8)}…）`,
-        )
+        const { documentId, status, chunkCount } = resp.data
+        if (status === 'PENDING' || status === 'PROCESSING') {
+          message.success('已提交入库，正在后台处理…')
+          setSidebarTab('knowledge')
+          setDocPage(1)
+          void loadDocuments(1)
+        } else {
+          message.success(
+            `已入库 ${chunkCount} 个片段（文档 ${documentId.slice(0, 8)}…）`,
+          )
+        }
         form.resetFields()
         setIngestFile(null)
         setIngestOpen(false)
@@ -331,7 +454,115 @@ export default function AILoveQAPage() {
         setIngestSubmitting(false)
       }
     },
-    [form, ingestMode, ingestFile, coupleId],
+    [form, ingestMode, ingestFile, coupleId, loadDocuments],
+  )
+
+  const knowledgeSidebarBody = useMemo(
+    () => (
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-3 pt-2">
+        {!canIngest ? (
+          <Text className="px-1 text-xs text-[#831843]/55">绑定情侣后可管理情侣私有知识库</Text>
+        ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto pr-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
+          {documentsLoading && documents.length === 0 ? (
+            <div className="flex justify-center py-6">
+              <Spin />
+            </div>
+          ) : documents.length === 0 ? (
+            <Text className="block px-2 py-4 text-center text-xs text-[#831843]/50">
+              暂无文档，点击「补充知识库」添加
+            </Text>
+          ) : (
+            <ul className="space-y-1" aria-label="知识库文档列表">
+              {documents.map((doc) => (
+                <li
+                  key={doc.documentId}
+                  className="group relative rounded-xl border border-rose-100/80 bg-white/90 px-2.5 py-2"
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <div className="min-w-0 flex-1 pr-6">
+                      <div className="line-clamp-1 text-[13px] font-medium text-[#831843]">
+                        {doc.title?.trim() || doc.sourceUrl?.trim() || '（未命名）'}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {documentStatusTag(doc.status)}
+                        {doc.status === 'SUCCESS' ? (
+                          <Text className="text-[11px] text-[#831843]/45">{doc.chunkCount} 片段</Text>
+                        ) : null}
+                      </div>
+                      <Text className="mt-0.5 block text-[11px] text-[#831843]/40">
+                        {doc.updatedAt ? dayjs(doc.updatedAt).format('MM-DD HH:mm') : ''}
+                      </Text>
+                    </div>
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        items: [
+                          ...(doc.status === 'FAILED'
+                            ? [
+                                {
+                                  key: 'reingest',
+                                  label: '重试入库',
+                                  onClick: () => void handleReingestDocument(doc),
+                                },
+                              ]
+                            : []),
+                          {
+                            key: 'delete',
+                            label: '删除',
+                            icon: <DeleteOutlined />,
+                            danger: true,
+                            onClick: () => handleDeleteDocument(doc),
+                          },
+                        ],
+                      }}
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<MoreOutlined />}
+                        className="!absolute right-1 top-1 !text-[#831843]/50 opacity-0 group-hover:opacity-100"
+                        aria-label="文档操作"
+                      />
+                    </Dropdown>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {docTotal > DOC_PAGE_SIZE ? (
+          <Pagination
+            size="small"
+            simple
+            current={docPage}
+            pageSize={DOC_PAGE_SIZE}
+            total={docTotal}
+            onChange={(p) => setDocPage(p)}
+            className="!text-center"
+          />
+        ) : null}
+        <Button
+          type="text"
+          size="small"
+          icon={<ReloadOutlined aria-hidden />}
+          onClick={() => void loadDocuments(docPage)}
+          className="!w-full !justify-start !text-[#831843]/70 hover:!bg-rose-100/60"
+        >
+          刷新列表
+        </Button>
+      </div>
+    ),
+    [
+      canIngest,
+      docPage,
+      docTotal,
+      documents,
+      documentsLoading,
+      handleDeleteDocument,
+      handleReingestDocument,
+      loadDocuments,
+    ],
   )
 
   const sidebarBody = useMemo(
@@ -484,7 +715,17 @@ export default function AILoveQAPage() {
             <div className="truncate text-xs text-[#831843]/55">知识库 + 多轮记忆</div>
           </div>
         </div>
-        {sidebarBody}
+        <Tabs
+          activeKey={sidebarTab}
+          onChange={(key) => {
+            if (key === 'chat' || key === 'knowledge') setSidebarTab(key)
+          }}
+          className="flex min-h-0 flex-1 flex-col px-2 [&_.ant-tabs-content]:min-h-0 [&_.ant-tabs-content]:flex-1 [&_.ant-tabs-tabpane]:flex [&_.ant-tabs-tabpane]:min-h-0 [&_.ant-tabs-tabpane]:flex-col"
+          items={[
+            { key: 'chat', label: '对话', children: sidebarBody },
+            { key: 'knowledge', label: '知识库', children: knowledgeSidebarBody },
+          ]}
+        />
       </aside>
 
       {/* 主区 */}
@@ -632,7 +873,7 @@ export default function AILoveQAPage() {
 
       {/* 移动端历史抽屉 */}
       <Modal
-        title={<span className="text-[#831843]">历史会话</span>}
+        title={<span className="text-[#831843]">对话与知识库</span>}
         open={historyOpen}
         onCancel={() => setHistoryOpen(false)}
         footer={null}
@@ -640,7 +881,18 @@ export default function AILoveQAPage() {
         destroyOnClose
         classNames={{ body: '!pt-1' }}
       >
-        <div className="max-h-[70vh] overflow-y-auto">{sidebarBody}</div>
+        <div className="flex max-h-[70vh] min-h-[50vh] flex-col overflow-hidden">
+          <Tabs
+            activeKey={sidebarTab}
+            onChange={(key) => {
+              if (key === 'chat' || key === 'knowledge') setSidebarTab(key)
+            }}
+            items={[
+              { key: 'chat', label: '对话', children: sidebarBody },
+              { key: 'knowledge', label: '知识库', children: knowledgeSidebarBody },
+            ]}
+          />
+        </div>
       </Modal>
 
       <Modal

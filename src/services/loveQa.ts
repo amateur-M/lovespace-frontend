@@ -281,10 +281,33 @@ export async function getLoveQaDocuments(coupleId?: string, page = 1, pageSize =
   return data
 }
 
+export type LoveQaDocumentDetail = LoveQaDocumentSummary & {
+  ownerUserId: string
+  errorMessage: string | null
+}
+
+/** 知识库文档详情（轮询入库状态） */
+export async function getLoveQaDocument(documentId: string) {
+  const { data } = await http.get<ApiResponse<LoveQaDocumentDetail>>(
+    `/api/v1/ai/love-qa/documents/${encodeURIComponent(documentId)}`,
+  )
+  return data
+}
+
 /** 删除知识库文档（Milvus 向量 + 台账） */
 export async function deleteLoveQaDocument(documentId: string) {
   const { data } = await http.delete<ApiResponse<null>>(
     `/api/v1/ai/love-qa/documents/${encodeURIComponent(documentId)}`,
+  )
+  return data
+}
+
+/** 强制重入库 */
+export async function postLoveQaReingest(documentId: string) {
+  const { data } = await http.post<ApiResponse<LoveQaIngestResponseData>>(
+    `/api/v1/ai/love-qa/documents/${encodeURIComponent(documentId)}/reingest`,
+    null,
+    { timeout: 30_000 },
   )
   return data
 }
