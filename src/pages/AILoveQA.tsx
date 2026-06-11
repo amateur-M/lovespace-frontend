@@ -7,7 +7,19 @@ import {
   SendOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
-import { Button, Form, Input, Modal, Spin, Tabs, Typography, Upload, message } from 'antd'
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Spin,
+  Tabs,
+  Tooltip,
+  Typography,
+  Upload,
+  message,
+} from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -83,6 +95,7 @@ export default function AILoveQAPage() {
   const coupleLoading = useCoupleStore((s) => s.loading)
   const coupleInfo = useCoupleStore((s) => s.info)
   const coupleId = coupleInfo?.bindingId ?? undefined
+  const canIngest = !!coupleId && !coupleLoading
 
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [messages, setMessages] = useState<UiMessage[]>([])
@@ -247,23 +260,35 @@ export default function AILoveQAPage() {
     }
   }, [input, sending, conversationId, coupleId, loadConversations])
 
+  const openIngestModal = useCallback(() => {
+    if (!canIngest) {
+      message.warning('请先绑定情侣后再补充知识库')
+      return
+    }
+    setIngestOpen(true)
+  }, [canIngest])
+
   const onIngest = useCallback(
     async (values: { title?: string; text?: string; sourceUrl?: string; category?: string }) => {
+      if (!coupleId) {
+        message.warning('请先绑定情侣后再补充知识库')
+        return
+      }
       setIngestSubmitting(true)
       try {
+        let resp
         if (ingestMode === 'text') {
           const text = values.text?.trim()
           if (!text) {
             message.warning('请填写要入库的正文')
             return
           }
-          const resp = await postLoveQaIngest({
+          resp = await postLoveQaIngest({
             text,
             title: values.title?.trim() || undefined,
             category: values.category?.trim() || undefined,
             coupleId,
           })
-          if (resp.code !== 0) throw new Error(resp.message || '入库失败')
         } else if (ingestMode === 'file') {
           if (!ingestFile) {
             message.warning('请选择要上传的文件')
@@ -273,25 +298,29 @@ export default function AILoveQAPage() {
           formData.append('file', ingestFile.originFileObj as File)
           if (values.title) formData.append('title', values.title)
           if (values.category) formData.append('category', values.category)
-          if (coupleId) formData.append('coupleId', coupleId)
-          const resp = await postLoveQaIngestFile(formData)
-          if (resp.code !== 0) throw new Error(resp.message || '文件入库失败')
+          formData.append('coupleId', coupleId)
+          resp = await postLoveQaIngestFile(formData)
         } else if (ingestMode === 'url') {
           const url = values.sourceUrl?.trim()
           if (!url) {
             message.warning('请输入有效的 URL')
             return
           }
-          const resp = await postLoveQaIngestUrl({
+          resp = await postLoveQaIngestUrl({
             sourceUrl: url,
             title: values.title?.trim() || undefined,
             category: values.category?.trim() || undefined,
             coupleId,
           })
-          if (resp.code !== 0) throw new Error(resp.message || 'URL 入库失败')
+        } else {
+          return
         }
-
-        message.success('已提交知识库（分片入库可能需要数秒）')
+        if (!resp || resp.code !== 0 || !resp.data) {
+          throw new Error(resp?.message || '入库失败')
+        }
+        message.success(
+          `已入库 ${resp.data.chunkCount} 个片段（文档 ${resp.data.documentId.slice(0, 8)}…）`,
+        )
         form.resetFields()
         setIngestFile(null)
         setIngestOpen(false)
@@ -401,15 +430,18 @@ export default function AILoveQAPage() {
       />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-rose-100/90 pt-2">
         <div className="flex flex-wrap items-center gap-1">
-          <Button
-            type="text"
-            size="small"
-            icon={<UploadOutlined className="text-rose-600" aria-hidden />}
-            onClick={() => setIngestOpen(true)}
-            className="!text-[#831843]/80 hover:!bg-rose-50"
-          >
-            补充知识库
-          </Button>
+          <Tooltip title={canIngest ? '向情侣私有知识库添加内容' : '绑定情侣后可补充知识库'}>
+            <Button
+              type="text"
+              size="small"
+              icon={<UploadOutlined className="text-rose-600" aria-hidden />}
+              onClick={openIngestModal}
+              disabled={!canIngest}
+              className="!text-[#831843]/80 hover:!bg-rose-50 disabled:!text-[#831843]/35"
+            >
+              补充知识库
+            </Button>
+          </Tooltip>
           {coupleLoading ? <Spin size="small" className="ml-1" /> : null}
         </div>
         <Button
@@ -626,6 +658,15 @@ export default function AILoveQAPage() {
         destroyOnClose
         width={620}
       >
+        {!canIngest ? (
+          <Alert
+            type="warning"
+            showIcon
+            className="!mb-3"
+            message="尚未绑定情侣"
+            description="知识库内容按情侣隔离存储，绑定后可为你们的专属知识库补充内容。"
+          />
+        ) : null}
         <Tabs
           activeKey={ingestMode}
           onChange={(key) => {

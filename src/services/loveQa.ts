@@ -50,12 +50,42 @@ export type LoveQaIngestBody = {
   metadata?: Record<string, unknown>
 }
 
+export type LoveQaIngestResponseData = {
+  documentId: string
+  status: string
+  chunkCount: number
+}
+
+export type LoveQaDocumentSummary = {
+  documentId: string
+  coupleId: string | null
+  title: string | null
+  sourceUrl: string | null
+  category: string | null
+  scope: string
+  status: string
+  chunkCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type LoveQaDocumentPageResponse = {
+  total: number
+  page: number
+  pageSize: number
+  items: LoveQaDocumentSummary[]
+}
+
 /** 文件上传入库（Multipart） */
 export async function postLoveQaIngestFile(formData: FormData) {
-  const { data } = await http.post<ApiResponse<null>>('/api/v1/ai/love-qa/ingest/file', formData, {
-    timeout: 120_000,
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  const { data } = await http.post<ApiResponse<LoveQaIngestResponseData>>(
+    '/api/v1/ai/love-qa/ingest/file',
+    formData,
+    {
+      timeout: 120_000,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    },
+  )
   return data
 }
 
@@ -66,9 +96,13 @@ export async function postLoveQaIngestUrl(body: {
   category?: string
   coupleId?: string
 }) {
-  const { data } = await http.post<ApiResponse<null>>('/api/v1/ai/love-qa/ingest/url', body, {
-    timeout: 60_000,
-  })
+  const { data } = await http.post<ApiResponse<LoveQaIngestResponseData>>(
+    '/api/v1/ai/love-qa/ingest/url',
+    body,
+    {
+      timeout: 60_000,
+    },
+  )
   return data
 }
 
@@ -224,11 +258,34 @@ export async function postLoveQaChatStream(
   }
 }
 
-/** 上传文本到知识库（分片入库 Milvus） */
+/** 上传文本到知识库（MySQL 台账 + Milvus 分片入库） */
 export async function postLoveQaIngest(body: LoveQaIngestBody) {
-  const { data } = await http.post<ApiResponse<null>>('/api/v1/ai/love-qa/ingest', body, {
-    timeout: 60_000,
-  })
+  const { data } = await http.post<ApiResponse<LoveQaIngestResponseData>>(
+    '/api/v1/ai/love-qa/ingest',
+    body,
+    {
+      timeout: 120_000,
+    },
+  )
+  return data
+}
+
+/** 知识库文档分页列表 */
+export async function getLoveQaDocuments(coupleId?: string, page = 1, pageSize = 10) {
+  const { data } = await http.get<ApiResponse<LoveQaDocumentPageResponse>>(
+    '/api/v1/ai/love-qa/documents',
+    {
+      params: { coupleId, page, pageSize },
+    },
+  )
+  return data
+}
+
+/** 删除知识库文档（Milvus 向量 + 台账） */
+export async function deleteLoveQaDocument(documentId: string) {
+  const { data } = await http.delete<ApiResponse<null>>(
+    `/api/v1/ai/love-qa/documents/${encodeURIComponent(documentId)}`,
+  )
   return data
 }
 
