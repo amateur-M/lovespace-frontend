@@ -34,6 +34,7 @@ export type LoveQaMessageLine = {
   role: string
   content: string
   createdAt: string
+  retrievedChunks?: RetrievedChunk[]
 }
 
 export type LoveQaMessagesResponse = {

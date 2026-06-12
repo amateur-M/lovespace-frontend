@@ -290,6 +290,10 @@ export default function AILoveQAPage() {
       key: `db-${m.id}`,
       role: m.role === 'user' ? 'user' : 'assistant',
       content: m.content,
+      retrievedChunks:
+        m.role === 'assistant' && m.retrievedChunks && m.retrievedChunks.length > 0
+          ? m.retrievedChunks
+          : undefined,
     }))
     setMessages(ui)
   }, [])
