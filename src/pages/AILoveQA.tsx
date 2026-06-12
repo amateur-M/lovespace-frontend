@@ -126,6 +126,7 @@ export default function AILoveQAPage() {
   const coupleInfo = useCoupleStore((s) => s.info)
   const coupleId = coupleInfo?.bindingId ?? undefined
   const canIngest = !!coupleId && !coupleLoading
+  const canChat = canIngest
 
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [messages, setMessages] = useState<UiMessage[]>([])
@@ -318,6 +319,10 @@ export default function AILoveQAPage() {
   const onSend = useCallback(async () => {
     const text = input.trim()
     if (!text || sending) return
+    if (!canChat) {
+      message.warning('请先绑定情侣后再使用恋爱问答')
+      return
+    }
     setSending(true)
     const userKey = newKey()
     const assistantKey = newKey()
@@ -373,7 +378,7 @@ export default function AILoveQAPage() {
       window.clearTimeout(timeoutId)
       setSending(false)
     }
-  }, [input, sending, conversationId, coupleId, loadConversations])
+  }, [input, sending, conversationId, coupleId, canChat, loadConversations])
 
   const openIngestModal = useCallback(() => {
     if (!canIngest) {
@@ -647,10 +652,14 @@ export default function AILoveQAPage() {
         ref={composerRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="向恋爱小助手提问，例如：吵架后怎么和好比较快？"
+        placeholder={
+          canChat
+            ? '向恋爱小助手提问，例如：吵架后怎么和好比较快？'
+            : '绑定情侣后可基于你们的知识库提问'
+        }
         autoSize={opts.large ? { minRows: 2, maxRows: 5 } : { minRows: 1, maxRows: 6 }}
         maxLength={4000}
-        disabled={sending}
+        disabled={sending || !canChat}
         onPressEnter={(e) => {
           if (!e.shiftKey) {
             e.preventDefault()
@@ -682,7 +691,7 @@ export default function AILoveQAPage() {
           icon={<SendOutlined aria-hidden />}
           loading={sending}
           onClick={() => void onSend()}
-          disabled={!input.trim()}
+          disabled={!input.trim() || !canChat}
           aria-label="发送"
           className="!flex !h-11 !w-11 !min-w-0 !items-center !justify-center !border-[#DB2777] !bg-[#DB2777] hover:!border-[#be185d] hover:!bg-[#be185d] disabled:!opacity-40"
         />
@@ -773,7 +782,18 @@ export default function AILoveQAPage() {
                 一起回答找到答案。
               </Text>
             </div>
-            <div className="w-full max-w-2xl">{composer({ large: true })}</div>
+            <div className="w-full max-w-2xl">
+              {!canChat ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  className="!mb-3"
+                  message="尚未绑定情侣"
+                  description="恋爱问答会检索你们情侣私有知识库（及可选公共库），绑定后即可开始提问。"
+                />
+              ) : null}
+              {composer({ large: true })}
+            </div>
           </div>
         ) : (
           <>
