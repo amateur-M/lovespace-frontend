@@ -223,7 +223,7 @@ export default function CoupleHome() {
                         </Button>
                       </Space>
                     </Descriptions.Item>
-                    <Descriptions.Item label="绑定状态">
+                    <Descriptions.Item label="当前状态">
                       {info.status === 1
                         ? '交往中'
                         : info.status === 2

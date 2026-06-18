@@ -1,12 +1,14 @@
 import {
-  CommentOutlined,
+  BookOutlined,
   DeleteOutlined,
-  HeartOutlined,
+  FileOutlined,
+  FileTextOutlined,
+  LinkOutlined,
   MenuOutlined,
+  MessageOutlined,
   MoreOutlined,
   PlusOutlined,
   ReloadOutlined,
-  SendOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
 import {
@@ -18,7 +20,6 @@ import {
   Modal,
   Pagination,
   Spin,
-  Tabs,
   Tag,
   Tooltip,
   Typography,
@@ -27,7 +28,7 @@ import {
 } from 'antd'
 import type { UploadFile } from 'antd/es/upload/interface'
 import dayjs from 'dayjs'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
   deleteLoveQaDocument,
@@ -44,15 +45,174 @@ import {
   type LoveQaMessageLine,
   type RetrievedChunk,
 } from '../services/loveQa'
+import kejiIcon from '../assets/keji.svg'
+import sendButtonIcon from '../assets/sendButton.svg'
 import { useAuthStore } from '../stores/authStore'
 import { useCoupleStore } from '../stores/coupleStore'
 
 const { Text, Title } = Typography
 
+/** 恋爱小助手吉祥物，用于侧栏、顶栏与空状态等品牌位 */
+function KejiMascot({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const boxClass =
+    size === 'sm' ? 'size-9 rounded-lg' : size === 'lg' ? 'size-16 rounded-2xl' : 'size-10 rounded-xl'
+  const imgClass = size === 'sm' ? 'size-8' : size === 'lg' ? 'size-14' : 'size-9'
+  const shadowClass =
+    size === 'lg' ? 'shadow-lg shadow-rose-300/35' : 'shadow-md shadow-rose-300/40'
+
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center overflow-hidden bg-white ${boxClass} ${shadowClass}`}
+      aria-hidden
+    >
+      <img src={kejiIcon} alt="" className={`${imgClass} object-contain`} />
+    </div>
+  )
+}
+
 type IngestMode = 'text' | 'file' | 'url'
 type SidebarTab = 'chat' | 'knowledge'
 
 const DOC_PAGE_SIZE = 10
+
+const CATEGORY_PRESETS = ['沟通', '冲突', '浪漫', '纪念日', '相处'] as const
+
+const INGEST_SUBMIT_LABEL: Record<IngestMode, string> = {
+  text: '提交入库',
+  file: '上传并入库',
+  url: '抓取并入库',
+}
+
+/** 三种入库方式主内容区统一高度，避免切换 Tab 时弹窗跳动 */
+const INGEST_MODE_BODY_CLASS = 'h-[16rem]'
+const INGEST_MODE_FIELD_H =
+  '!h-[12.5rem] !min-h-[12.5rem] [&_.ant-upload]:!h-full [&_.ant-upload-drag]:!flex [&_.ant-upload-drag]:!h-full [&_.ant-upload-drag]:!min-h-[12.5rem] [&_.ant-upload-drag]:!flex-col [&_.ant-upload-drag]:!items-center [&_.ant-upload-drag]:!justify-center'
+const INGEST_MODE_TEXTAREA_H = '!h-[11rem] !min-h-[11rem] !resize-none !rounded-xl'
+
+const SIDEBAR_ACTION_BTN_CLASS =
+  '!flex !h-11 !w-full !items-center !justify-center !gap-2 !rounded-xl !border-rose-200/90 !bg-white !font-medium !text-[#831843] !shadow-sm transition-colors duration-200 hover:!cursor-pointer hover:!border-[#F472B6] hover:!bg-rose-50/90 disabled:!cursor-not-allowed disabled:!opacity-50'
+
+/** 侧栏「对话 / 知识库」分段切换 */
+function SidebarTabSwitch({
+  activeKey,
+  onChange,
+  knowledgeCount = 0,
+  processingDocs = false,
+}: {
+  activeKey: SidebarTab
+  onChange: (key: SidebarTab) => void
+  knowledgeCount?: number
+  processingDocs?: boolean
+}) {
+  const tabs: {
+    key: SidebarTab
+    label: string
+    icon: ReactNode
+    badge?: number
+    pulse?: boolean
+  }[] = [
+    { key: 'chat', label: '对话', icon: <MessageOutlined aria-hidden className="text-sm" /> },
+    {
+      key: 'knowledge',
+      label: '知识库',
+      icon: <BookOutlined aria-hidden className="text-sm" />,
+      badge: knowledgeCount,
+      pulse: processingDocs,
+    },
+  ]
+
+  return (
+    <div
+      className="mx-3 mb-3 grid grid-cols-2 gap-1 rounded-xl bg-rose-100/70 p-1"
+      role="tablist"
+      aria-label="侧栏分类"
+    >
+      {tabs.map((tab) => {
+        const active = activeKey === tab.key
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(tab.key)}
+            className={[
+              'relative flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-[13px] font-medium transition-colors duration-200',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DB2777]',
+              active
+                ? 'bg-white text-[#831843] shadow-sm'
+                : 'text-[#831843]/55 hover:text-[#831843]/85',
+            ].join(' ')}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+            {tab.pulse ? (
+              <span
+                className="size-1.5 shrink-0 rounded-full bg-[#DB2777] motion-safe:animate-pulse"
+                aria-label="有文档处理中"
+              />
+            ) : null}
+            {!tab.pulse && tab.badge != null && tab.badge > 0 ? (
+              <span className="rounded-full bg-rose-200/90 px-1.5 text-[10px] font-semibold leading-5 text-[#831843]/75">
+                {tab.badge > 99 ? '99+' : tab.badge}
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** 补充知识库弹窗：入库方式分段切换 */
+function IngestModeSwitch({
+  activeKey,
+  onChange,
+  disabled = false,
+}: {
+  activeKey: IngestMode
+  onChange: (key: IngestMode) => void
+  disabled?: boolean
+}) {
+  const modes: { key: IngestMode; label: string; icon: ReactNode }[] = [
+    { key: 'text', label: '粘贴文本', icon: <FileTextOutlined aria-hidden className="text-sm" /> },
+    { key: 'file', label: '上传文件', icon: <FileOutlined aria-hidden className="text-sm" /> },
+    { key: 'url', label: '网页链接', icon: <LinkOutlined aria-hidden className="text-sm" /> },
+  ]
+
+  return (
+    <div
+      className="grid grid-cols-3 gap-1 rounded-xl bg-rose-100/70 p-1"
+      role="tablist"
+      aria-label="入库方式"
+    >
+      {modes.map((mode) => {
+        const active = activeKey === mode.key
+        return (
+          <button
+            key={mode.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            disabled={disabled}
+            onClick={() => onChange(mode.key)}
+            className={[
+              'flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-2.5 text-[12px] font-medium transition-colors duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-[13px]',
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DB2777]',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+              active
+                ? 'bg-white text-[#831843] shadow-sm'
+                : 'text-[#831843]/55 hover:text-[#831843]/85',
+            ].join(' ')}
+          >
+            {mode.icon}
+            <span>{mode.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 function documentStatusTag(status: string) {
   switch (status) {
@@ -86,6 +246,17 @@ type UiMessage = {
 
 function newKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+function resolveComposerTextArea(
+  ref: RefObject<HTMLTextAreaElement | null>,
+): HTMLTextAreaElement | null {
+  const node = ref.current
+  if (!node) return null
+  const inner = node as HTMLTextAreaElement & {
+    resizableTextArea?: { textArea: HTMLTextAreaElement }
+  }
+  return inner.resizableTextArea?.textArea ?? node
 }
 
 /**
@@ -154,6 +325,18 @@ export default function AILoveQAPage() {
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const prevConversationIdRef = useRef<string | null>(null)
+  const [composerMultiLine, setComposerMultiLine] = useState(false)
+
+  const syncComposerLayout = useCallback(() => {
+    const textarea = resolveComposerTextArea(composerRef)
+    if (!textarea) return
+    const lineHeight = parseFloat(window.getComputedStyle(textarea).lineHeight) || 24
+    setComposerMultiLine(textarea.scrollHeight > lineHeight + 8)
+  }, [])
+
+  useLayoutEffect(() => {
+    syncComposerLayout()
+  }, [input, syncComposerLayout])
 
   useEffect(() => {
     if (!isAuthed) return
@@ -392,6 +575,23 @@ export default function AILoveQAPage() {
     setIngestOpen(true)
   }, [canIngest])
 
+  const closeIngestModal = useCallback(() => {
+    if (ingestSubmitting) return
+    setIngestOpen(false)
+    setIngestMode('text')
+    setIngestFile(null)
+    form.resetFields()
+  }, [form, ingestSubmitting])
+
+  const onIngestModeChange = useCallback(
+    (key: IngestMode) => {
+      setIngestMode(key)
+      setIngestFile(null)
+      form.resetFields(['text', 'sourceUrl'])
+    },
+    [form],
+  )
+
   const onIngest = useCallback(
     async (values: { title?: string; text?: string; sourceUrl?: string; category?: string }) => {
       if (!coupleId) {
@@ -468,19 +668,53 @@ export default function AILoveQAPage() {
 
   const knowledgeSidebarBody = useMemo(
     () => (
-      <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-3 pt-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-3">
+        <Tooltip title={canIngest ? '添加文本、文件或网页到情侣知识库' : '绑定情侣后可补充知识库'}>
+          <Button
+            type="default"
+            icon={<UploadOutlined aria-hidden />}
+            onClick={openIngestModal}
+            disabled={!canIngest}
+            className={SIDEBAR_ACTION_BTN_CLASS}
+          >
+            补充知识库
+          </Button>
+        </Tooltip>
         {!canIngest ? (
-          <Text className="px-1 text-xs text-[#831843]/55">绑定情侣后可管理情侣私有知识库</Text>
-        ) : null}
+          <Text className="px-1 text-xs leading-relaxed text-[#831843]/55">
+            绑定情侣后可管理情侣私有知识库
+          </Text>
+        ) : (
+          <div className="flex items-center justify-between px-1">
+            <Text className="text-[11px] font-semibold uppercase tracking-wide text-[#831843]/45">
+              已入库文档
+            </Text>
+            {docTotal > 0 ? (
+              <Text className="text-[11px] text-[#831843]/45">共 {docTotal} 篇</Text>
+            ) : null}
+          </div>
+        )}
         <div className="min-h-0 flex-1 overflow-y-auto pr-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
           {documentsLoading && documents.length === 0 ? (
             <div className="flex justify-center py-6">
               <Spin />
             </div>
           ) : documents.length === 0 ? (
-            <Text className="block px-2 py-4 text-center text-xs text-[#831843]/50">
-              暂无文档，点击「补充知识库」添加
-            </Text>
+            <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
+              <Text className="text-xs leading-relaxed text-[#831843]/50">
+                还没有知识内容，补充后问答会更懂你们
+              </Text>
+              <Button
+                type="default"
+                size="small"
+                icon={<UploadOutlined aria-hidden />}
+                onClick={openIngestModal}
+                disabled={!canIngest}
+                className="!rounded-full !border-rose-200/90 !text-[#831843] hover:!border-[#F472B6] hover:!bg-rose-50/90"
+              >
+                立即补充
+              </Button>
+            </div>
           ) : (
             <ul className="space-y-1" aria-label="知识库文档列表">
               {documents.map((doc) => (
@@ -556,7 +790,7 @@ export default function AILoveQAPage() {
           size="small"
           icon={<ReloadOutlined aria-hidden />}
           onClick={() => void loadDocuments(docPage)}
-          className="!w-full !justify-start !text-[#831843]/70 hover:!bg-rose-100/60"
+          className="!w-full !cursor-pointer !justify-start !text-[#831843]/70 hover:!bg-rose-100/60"
         >
           刷新列表
         </Button>
@@ -571,21 +805,22 @@ export default function AILoveQAPage() {
       handleDeleteDocument,
       handleReingestDocument,
       loadDocuments,
+      openIngestModal,
     ],
   )
 
   const sidebarBody = useMemo(
     () => (
-      <div className="flex min-h-0 flex-1 flex-col gap-1 px-2 pb-3 pt-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 px-2 pb-3">
         <Button
           type="default"
           icon={<PlusOutlined aria-hidden />}
           onClick={startNewChat}
-          className="!flex !h-11 !items-center !justify-center !gap-2 !rounded-xl !border-rose-200/90 !bg-white !font-medium !text-[#831843] !shadow-sm transition-colors duration-200 hover:!border-[#F472B6] hover:!bg-rose-50/90"
+          className={SIDEBAR_ACTION_BTN_CLASS}
         >
           新建对话
         </Button>
-        <div className="mt-3 px-1">
+        <div className="px-1">
           <Text className="text-[11px] font-semibold uppercase tracking-wide text-[#831843]/45">
             最近对话
           </Text>
@@ -635,7 +870,7 @@ export default function AILoveQAPage() {
             size="small"
             icon={<ReloadOutlined aria-hidden />}
             onClick={() => void loadConversations()}
-            className="!w-full !justify-start !text-[#831843]/70 hover:!bg-rose-100/60 hover:!text-[#831843]"
+            className="!w-full !cursor-pointer !justify-start !text-[#831843]/70 hover:!bg-rose-100/60 hover:!text-[#831843]"
           >
             刷新列表
           </Button>
@@ -648,8 +883,9 @@ export default function AILoveQAPage() {
   const composer = (opts: { large?: boolean }) => (
     <div
       className={[
-        'border border-rose-200/90 bg-white shadow-sm transition-shadow duration-200 focus-within:border-[#F472B6]/80 focus-within:shadow-md',
-        opts.large ? 'rounded-[1.75rem] px-4 py-3 sm:px-5 sm:py-4' : 'rounded-2xl px-3 py-2.5',
+        'flex gap-2 border border-rose-200/90 bg-white shadow-sm transition-shadow duration-200 focus-within:border-[#F472B6]/80 focus-within:shadow-md',
+        composerMultiLine ? 'items-end' : 'items-center',
+        opts.large ? 'rounded-[1.75rem] px-4 py-3 sm:gap-3 sm:px-5 sm:py-4' : 'rounded-2xl px-3 py-2.5',
       ].join(' ')}
     >
       <Input.TextArea
@@ -661,7 +897,7 @@ export default function AILoveQAPage() {
             ? '向恋爱小助手提问，例如：吵架后怎么和好比较快？'
             : '绑定情侣后可基于你们的知识库提问'
         }
-        autoSize={opts.large ? { minRows: 2, maxRows: 5 } : { minRows: 1, maxRows: 6 }}
+        autoSize={opts.large ? { minRows: 1, maxRows: 5 } : { minRows: 1, maxRows: 6 }}
         maxLength={4000}
         disabled={sending || !canChat}
         onPressEnter={(e) => {
@@ -670,34 +906,20 @@ export default function AILoveQAPage() {
             void onSend()
           }
         }}
-        className="!resize-none !border-0 !bg-transparent !p-0 !shadow-none !text-[15px] !leading-relaxed !text-[#431407] placeholder:!text-[#831843]/40 focus:!shadow-none"
+        className="!min-h-11 !min-w-0 !flex-1 !resize-none !border-0 !bg-transparent !p-0 !py-[11px] !shadow-none !text-[15px] !leading-[22px] !text-[#431407] placeholder:!text-[#831843]/40 focus:!shadow-none"
       />
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-rose-100/90 pt-2">
-        <div className="flex flex-wrap items-center gap-1">
-          <Tooltip title={canIngest ? '向情侣私有知识库添加内容' : '绑定情侣后可补充知识库'}>
-            <Button
-              type="text"
-              size="small"
-              icon={<UploadOutlined className="text-rose-600" aria-hidden />}
-              onClick={openIngestModal}
-              disabled={!canIngest}
-              className="!text-[#831843]/80 hover:!bg-rose-50 disabled:!text-[#831843]/35"
-            >
-              补充知识库
-            </Button>
-          </Tooltip>
-          {coupleLoading ? <Spin size="small" className="ml-1" /> : null}
-        </div>
+      <div className="flex shrink-0 items-center gap-1">
+        {coupleLoading ? <Spin size="small" /> : null}
         <Button
-          type="primary"
+          type="default"
           shape="circle"
           size="large"
-          icon={<SendOutlined aria-hidden />}
+          icon={<img src={sendButtonIcon} alt="" aria-hidden className="size-11 object-contain" />}
           loading={sending}
           onClick={() => void onSend()}
           disabled={!input.trim() || !canChat}
           aria-label="发送"
-          className="!flex !h-11 !w-11 !min-w-0 !items-center !justify-center !border-[#DB2777] !bg-[#DB2777] hover:!border-[#be185d] hover:!bg-[#be185d] disabled:!opacity-40"
+          className="!flex !size-11 !min-w-0 !cursor-pointer !items-center !justify-center !border-0 !bg-transparent !p-0 !shadow-none hover:!bg-transparent disabled:!cursor-not-allowed disabled:!opacity-40"
         />
       </div>
     </div>
@@ -713,32 +935,25 @@ export default function AILoveQAPage() {
     <div className="love-qa-page flex h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-2xl border border-rose-200/90 bg-white shadow-sm lg:flex-row">
       {/* 侧栏：千问式浅底 + 新建 / 最近对话（大屏） */}
       <aside
-        className="hidden h-full min-h-0 w-[min(100%,280px)] shrink-0 flex-col overflow-hidden border-b border-rose-100/90 bg-gradient-to-b from-[#FDF2F8] via-[#FFF7FB] to-white lg:flex lg:border-b-0 lg:border-r"
+        className="hidden h-full min-h-0 w-[min(100%,300px)] shrink-0 flex-col overflow-hidden border-b border-rose-100/90 bg-gradient-to-b from-[#FDF2F8] via-[#FFF7FB] to-white lg:flex lg:border-b-0 lg:border-r"
         aria-label="恋爱问答侧栏"
       >
         <div className="flex items-center gap-2 border-b border-rose-100/80 px-4 py-4">
-          <div
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-md shadow-rose-300/40"
-            aria-hidden
-          >
-            <HeartOutlined className="text-lg" />
-          </div>
+          <KejiMascot />
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-[#831843]">恋爱问答</div>
             <div className="truncate text-xs text-[#831843]/55">知识库 + 多轮记忆</div>
           </div>
         </div>
-        <Tabs
+        <SidebarTabSwitch
           activeKey={sidebarTab}
-          onChange={(key) => {
-            if (key === 'chat' || key === 'knowledge') setSidebarTab(key)
-          }}
-          className="flex min-h-0 flex-1 flex-col px-2 [&_.ant-tabs-content]:min-h-0 [&_.ant-tabs-content]:flex-1 [&_.ant-tabs-tabpane]:flex [&_.ant-tabs-tabpane]:min-h-0 [&_.ant-tabs-tabpane]:flex-col"
-          items={[
-            { key: 'chat', label: '对话', children: sidebarBody },
-            { key: 'knowledge', label: '知识库', children: knowledgeSidebarBody },
-          ]}
+          onChange={setSidebarTab}
+          knowledgeCount={docTotal}
+          processingDocs={hasProcessingDocs}
         />
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {sidebarTab === 'chat' ? sidebarBody : knowledgeSidebarBody}
+        </div>
       </aside>
 
       {/* 主区 */}
@@ -746,9 +961,7 @@ export default function AILoveQAPage() {
         {/* 移动端顶栏 */}
         <header className="flex items-center justify-between gap-2 border-b border-rose-100/90 px-3 py-2.5 lg:hidden">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 text-white">
-              <CommentOutlined />
-            </div>
+            <KejiMascot size="sm" />
             <span className="truncate text-sm font-semibold text-[#831843]">恋爱问答</span>
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
@@ -770,11 +983,8 @@ export default function AILoveQAPage() {
         {!hasThread ? (
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8 sm:px-8">
             <div className="mb-8 flex flex-col items-center text-center">
-              <div
-                className="mb-5 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg shadow-rose-300/35"
-                aria-hidden
-              >
-                <HeartOutlined className="text-3xl" />
+              <div className="mb-5">
+                <KejiMascot size="lg" />
               </div>
               <Title
                 level={3}
@@ -827,20 +1037,23 @@ export default function AILoveQAPage() {
                         m.retrievedChunks &&
                         m.retrievedChunks.length > 0 && (
                           <div className="mb-2 space-y-1.5 border-b border-rose-100 pb-2">
-                            <Text className="text-[11px] text-[#831843]/60">
-                              📚 参考了 {m.retrievedChunks.length} 条知识
-                              {m.retrievedChunks.some((c) => c.source) && (
-                                <>
-                                  ：
-                                  {[
-                                    ...new Set(
-                                      m.retrievedChunks.map((c) => c.source).filter(Boolean),
-                                    ),
-                                  ]
-                                    .slice(0, 3)
-                                    .join('、')}
-                                </>
-                              )}
+                            <Text className="flex items-center gap-1 text-[11px] text-[#831843]/60">
+                              <BookOutlined aria-hidden className="text-[11px]" />
+                              <span>
+                                参考了 {m.retrievedChunks.length} 条知识
+                                {m.retrievedChunks.some((c) => c.source) && (
+                                  <>
+                                    ：
+                                    {[
+                                      ...new Set(
+                                        m.retrievedChunks.map((c) => c.source).filter(Boolean),
+                                      ),
+                                    ]
+                                      .slice(0, 3)
+                                      .join('、')}
+                                  </>
+                                )}
+                              </span>
                             </Text>
                             <div className="space-y-1">
                               {m.retrievedChunks.map((chunk, idx) => {
@@ -906,156 +1119,202 @@ export default function AILoveQAPage() {
         classNames={{ body: '!pt-1' }}
       >
         <div className="flex max-h-[70vh] min-h-[50vh] flex-col overflow-hidden">
-          <Tabs
+          <SidebarTabSwitch
             activeKey={sidebarTab}
-            onChange={(key) => {
-              if (key === 'chat' || key === 'knowledge') setSidebarTab(key)
-            }}
-            items={[
-              { key: 'chat', label: '对话', children: sidebarBody },
-              { key: 'knowledge', label: '知识库', children: knowledgeSidebarBody },
-            ]}
+            onChange={setSidebarTab}
+            knowledgeCount={docTotal}
+            processingDocs={hasProcessingDocs}
           />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {sidebarTab === 'chat' ? sidebarBody : knowledgeSidebarBody}
+          </div>
         </div>
       </Modal>
 
       <Modal
-        title={<span className="text-[#831843]">补充知识库</span>}
+        title={
+          <div className="flex items-start gap-3 pr-6">
+            <div
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm shadow-rose-200/50"
+              aria-hidden
+            >
+              <BookOutlined className="text-lg text-[#DB2777]" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-base font-semibold text-[#831843]">补充知识库</div>
+              <div className="mt-0.5 text-sm font-normal leading-relaxed text-[#831843]/60">
+                添加你们的约定、笔记或文章，恋爱问答会检索并引用这些内容
+              </div>
+            </div>
+          </div>
+        }
         open={ingestOpen}
-        onCancel={() => {
-          if (!ingestSubmitting) {
-            setIngestOpen(false)
-            setIngestMode('text')
-            setIngestFile(null)
-            form.resetFields()
-          }
-        }}
+        onCancel={closeIngestModal}
         footer={null}
         destroyOnClose
-        width={620}
+        centered
+        width={640}
+        classNames={{
+          content: '!rounded-2xl !overflow-hidden !p-0',
+          header: '!mb-0 !border-b !border-rose-100/90 !bg-gradient-to-r from-[#FFF7FB] to-white !px-6 !py-5',
+          body: '!px-6 !py-5',
+        }}
+        maskClosable={!ingestSubmitting}
       >
-        {!canIngest ? (
-          <Alert
-            type="warning"
-            showIcon
-            className="!mb-3"
-            message="尚未绑定情侣"
-            description="知识库内容按情侣隔离存储，绑定后可为你们的专属知识库补充内容。"
+        <div>
+          {!canIngest ? (
+            <Alert
+              type="warning"
+              showIcon
+              className="!mb-4 !rounded-xl !border-amber-200/80 !bg-amber-50/80"
+              message="尚未绑定情侣"
+              description="知识库按情侣隔离存储，绑定后可为你们的专属知识库补充内容。"
+            />
+          ) : (
+            <div className="mb-4 rounded-xl border border-rose-100/90 bg-rose-50/40 px-3.5 py-2.5">
+              <Text className="text-xs leading-relaxed text-[#831843]/65">
+                内容将分片写入向量库。处理完成后可在左侧「知识库」Tab 查看入库状态。
+              </Text>
+            </div>
+          )}
+
+          <IngestModeSwitch
+            activeKey={ingestMode}
+            onChange={onIngestModeChange}
+            disabled={!canIngest || ingestSubmitting}
           />
-        ) : null}
-        <Tabs
-          activeKey={ingestMode}
-          onChange={(key) => {
-            if (key === 'text' || key === 'file' || key === 'url') {
-              setIngestMode(key)
-            }
-            setIngestFile(null)
-            form.resetFields(['text', 'sourceUrl'])
-          }}
-          className="pt-1"
-        >
-          <Tabs.TabPane tab="粘贴文本" key="text">
-            <Form form={form} layout="vertical" onFinish={onIngest}>
-              <Form.Item label="标题（可选）" name="title">
-                <Input placeholder="例如：我们吵架后的沟通约定" maxLength={120} />
-              </Form.Item>
-              <Form.Item label="分类（可选）" name="category">
-                <Input placeholder="沟通 / 冲突 / 浪漫 等" />
-              </Form.Item>
-              <Form.Item
-                label="正文"
-                name="text"
-                rules={[{ required: true, message: '请填写正文' }]}
-              >
-                <Input.TextArea
-                  rows={8}
-                  placeholder="粘贴文章片段、笔记或约定事项，将分片写入向量库供问答引用。"
-                  maxLength={50_000}
-                  showCount
+
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={onIngest}
+            disabled={!canIngest}
+            className="love-qa-ingest-form mt-5 [&_.ant-form-item-label>label]:!text-[#831843]/80"
+            requiredMark={false}
+          >
+            <div className="grid gap-0 sm:grid-cols-2 sm:gap-4">
+              <Form.Item label="标题（可选）" name="title" className="!mb-4 sm:!mb-5">
+                <Input
+                  placeholder="例如：我们吵架后的沟通约定"
+                  maxLength={120}
+                  disabled={ingestSubmitting}
                 />
               </Form.Item>
-              <Form.Item className="!mb-0 flex justify-end gap-2">
-                <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
-                  取消
-                </Button>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={ingestSubmitting}
-                  icon={<UploadOutlined />}
-                >
-                  提交入库
-                </Button>
-              </Form.Item>
-            </Form>
-          </Tabs.TabPane>
+              <div>
+                <Form.Item label="分类（可选）" name="category" className="!mb-2">
+                  <Input
+                    placeholder="沟通 / 冲突 / 浪漫 等"
+                    disabled={ingestSubmitting}
+                  />
+                </Form.Item>
+                <div className="mb-4 flex flex-wrap gap-1.5 sm:mb-5">
+                  {CATEGORY_PRESETS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      disabled={!canIngest || ingestSubmitting}
+                      onClick={() => form.setFieldValue('category', tag)}
+                      className="cursor-pointer rounded-full border border-rose-200/90 bg-white px-2.5 py-0.5 text-xs text-[#831843]/75 transition-colors duration-200 hover:border-[#F472B6] hover:bg-rose-50/90 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-          <Tabs.TabPane tab="上传文件" key="file">
-            <Form form={form} layout="vertical" onFinish={onIngest}>
-              <Form.Item label="标题（可选）" name="title">
-                <Input placeholder="文件主题" />
-              </Form.Item>
-              <Form.Item label="分类（可选）" name="category">
-                <Input placeholder="沟通 / 冲突 / 浪漫 等" />
-              </Form.Item>
-              <Form.Item label="选择文件（.txt / .md）" required>
-                <Upload
-                  beforeUpload={() => false}
-                  maxCount={1}
-                  fileList={ingestFile ? [ingestFile] : []}
-                  onChange={({ fileList }) => setIngestFile(fileList[0] || null)}
-                  accept=".txt,.md,.markdown"
+            <div className={INGEST_MODE_BODY_CLASS}>
+              {ingestMode === 'text' ? (
+                <Form.Item
+                  label="正文"
+                  name="text"
+                  rules={[{ required: true, message: '请填写正文' }]}
+                  className="!mb-0 !h-full [&_.ant-form-item-control]:!flex-1"
                 >
-                  <Button icon={<UploadOutlined />}>选择文本文件</Button>
-                </Upload>
-              </Form.Item>
-              <Form.Item className="!mb-0 flex justify-end gap-2">
-                <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
-                  取消
-                </Button>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={ingestSubmitting}
-                  icon={<UploadOutlined />}
-                >
-                  上传并入库
-                </Button>
-              </Form.Item>
-            </Form>
-          </Tabs.TabPane>
+                  <Input.TextArea
+                    placeholder="粘贴文章片段、笔记或约定事项…"
+                    maxLength={50_000}
+                    showCount
+                    disabled={ingestSubmitting}
+                    className={INGEST_MODE_TEXTAREA_H}
+                  />
+                </Form.Item>
+              ) : null}
 
-          <Tabs.TabPane tab="从 URL 导入" key="url">
-            <Form form={form} layout="vertical" onFinish={onIngest}>
-              <Form.Item
-                label="网页 URL"
-                name="sourceUrl"
-                rules={[{ required: true, message: '请输入 URL' }]}
-              >
-                <Input placeholder="https://example.com/love-article" />
-              </Form.Item>
-              <Form.Item label="标题（可选）" name="title">
-                <Input placeholder="文章标题" />
-              </Form.Item>
-              <Form.Item label="分类（可选）" name="category">
-                <Input placeholder="沟通 / 冲突 / 浪漫 等" />
-              </Form.Item>
-              <Form.Item className="!mb-0 flex justify-end gap-2">
-                <Button onClick={() => setIngestOpen(false)} disabled={ingestSubmitting}>
+              {ingestMode === 'file' ? (
+                <Form.Item label="选择文件" required className="!mb-0 !h-full [&_.ant-form-item-control]:!flex-1">
+                  <Upload.Dragger
+                    beforeUpload={() => false}
+                    maxCount={1}
+                    fileList={ingestFile ? [ingestFile] : []}
+                    onChange={({ fileList }) => setIngestFile(fileList[0] || null)}
+                    accept=".txt,.md,.markdown"
+                    disabled={!canIngest || ingestSubmitting}
+                    className={`love-qa-ingest-upload !rounded-xl ${INGEST_MODE_FIELD_H} [&_.ant-upload-drag]:!rounded-xl [&_.ant-upload-drag]:!border-rose-200/90 [&_.ant-upload-drag]:!bg-rose-50/25 [&_.ant-upload-drag:hover]:!border-[#F472B6]`}
+                  >
+                    <p className="ant-upload-drag-icon !mb-2">
+                      <UploadOutlined className="!text-2xl !text-[#DB2777]" aria-hidden />
+                    </p>
+                    <p className="ant-upload-text !text-sm !font-medium !text-[#831843]">
+                      点击或拖拽文件到此处
+                    </p>
+                    <p className="ant-upload-hint !text-xs !text-[#831843]/50">
+                      支持 .txt、.md，单个文本文件
+                    </p>
+                  </Upload.Dragger>
+                </Form.Item>
+              ) : null}
+
+              {ingestMode === 'url' ? (
+                <Form.Item
+                  label="网页 URL"
+                  name="sourceUrl"
+                  rules={[
+                    { required: true, message: '请输入 URL' },
+                    {
+                      pattern: /^https?:\/\/.+/i,
+                      message: '请以 http:// 或 https:// 开头',
+                    },
+                  ]}
+                  className="!mb-0 !h-full [&_.ant-form-item-control]:!flex-1"
+                >
+                  <div className={`flex ${INGEST_MODE_FIELD_H} flex-col justify-center`}>
+                    <Input
+                      prefix={<LinkOutlined className="text-[#831843]/40" aria-hidden />}
+                      placeholder="https://example.com/love-article"
+                      disabled={ingestSubmitting}
+                    />
+                  </div>
+                </Form.Item>
+              ) : null}
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-rose-100/90 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <Text className="text-xs leading-relaxed text-[#831843]/45">
+                {ingestMode === 'file'
+                  ? '上传后将自动分片入库'
+                  : ingestMode === 'url'
+                    ? '系统将抓取网页正文后入库'
+                    : '建议单次粘贴清晰、完整的段落'}
+              </Text>
+              <div className="flex shrink-0 justify-end gap-2">
+                <Button onClick={closeIngestModal} disabled={ingestSubmitting}>
                   取消
                 </Button>
                 <Button
                   type="primary"
                   htmlType="submit"
                   loading={ingestSubmitting}
-                  icon={<UploadOutlined />}
+                  disabled={!canIngest}
+                  icon={<UploadOutlined aria-hidden />}
+                  className="!min-w-[7.5rem]"
                 >
-                  抓取并入库
+                  {INGEST_SUBMIT_LABEL[ingestMode]}
                 </Button>
-              </Form.Item>
-            </Form>
-          </Tabs.TabPane>
-        </Tabs>
+              </div>
+            </div>
+          </Form>
+        </div>
       </Modal>
     </div>
   )
