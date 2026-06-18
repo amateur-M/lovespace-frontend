@@ -18,6 +18,19 @@ import Memorial from './pages/Memorial'
 import Inbox from './pages/Inbox'
 import Register from './pages/Register'
 import NotFoundPage from './pages/NotFoundPage'
+import AdminRoute from './components/AdminRoute'
+import AdminLayout from './layouts/AdminLayout'
+import AdminLogin from './pages/admin/AdminLogin'
+import AdminForbidden from './pages/admin/AdminForbidden'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminUsers from './pages/admin/AdminUsers'
+import AdminCouples from './pages/admin/AdminCouples'
+import AdminTimeline from './pages/admin/AdminTimeline'
+import AdminAlbums from './pages/admin/AdminAlbums'
+import AdminMessages from './pages/admin/AdminMessages'
+import AdminPlans from './pages/admin/AdminPlans'
+import AdminMemorialDays from './pages/admin/AdminMemorialDays'
+import AdminLoveQA from './pages/admin/AdminLoveQA'
 
 function App() {
   return (
@@ -25,6 +38,21 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/forbidden" element={<AdminForbidden />} />
+        <Route path="/admin" element={<AdminRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="couples" element={<AdminCouples />} />
+            <Route path="timeline" element={<AdminTimeline />} />
+            <Route path="albums" element={<AdminAlbums />} />
+            <Route path="messages" element={<AdminMessages />} />
+            <Route path="plans" element={<AdminPlans />} />
+            <Route path="memorial-days" element={<AdminMemorialDays />} />
+            <Route path="love-qa" element={<AdminLoveQA />} />
+          </Route>
+        </Route>
         <Route element={<AppLayout />}>
           <Route index element={<HomePage />} />
           <Route path="/profile" element={<Profile />} />

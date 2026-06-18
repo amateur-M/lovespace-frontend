@@ -9,6 +9,7 @@ export type User = {
   gender?: number | null
   birthday?: string | null
   status?: number | null
+  role?: number | null
   createdAt?: string | null
   updatedAt?: string | null
 }
